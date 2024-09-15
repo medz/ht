@@ -1,7 +1,7 @@
 name: ht
 description: Common types of HTTP operations
 version: 0.0.0
-repository: https://github.com/odroe/http
+repository: https://github.com/medz/http
 
 environment:
   sdk: ^3.5.1
