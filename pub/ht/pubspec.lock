@@ -111,7 +111,7 @@ packages:
     source: hosted
     version: "3.2.1"
   http_parser:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: http_parser
       sha256: "40f592dd352890c3b60fec1b68e786cefb9603e05ff303dbc4dda49b304ecdf4"
@@ -175,7 +175,7 @@ packages:
     source: hosted
     version: "1.15.0"
   mime:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: mime
       sha256: "801fd0b26f14a4a58ccb09d5892c3fbdeff209594300a542492cf13fba9d247a"
