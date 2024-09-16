@@ -1,10 +1,17 @@
 import 'dart:convert';
+import 'dart:math';
 import 'dart:typed_data';
+
+import '../utils/clonable_stream.dart';
 
 /// Binary large object
 abstract interface class Blob {
   /// Creates a new [Blob] from [bytes].
-  const factory Blob.fromBytes(Uint8List bytes, {String type}) = _BytesBlob;
+  const factory Blob.fromBytes(Uint8List bytes, {String? type}) = _BytesBlob;
+
+  /// Creates a new [Blob] from [stream].
+  factory Blob.fromStream(Stream<Uint8List> stream,
+      {String? type, required int size}) = _StreamBlob;
 
   /// The total size of the [Blob] in bytes.
   int get size;
@@ -29,12 +36,13 @@ abstract interface class Blob {
 
   /// Creates and returns a new [Blob] containing a subset of this [Blob] objects
   /// data. The original [Blob] is not altered.
-  Blob slice(int start, [int? end]);
+  Blob slice(int start, [int? end, String? contentType]);
 }
 
 /// The octet bytes [Blob] impl.
 class _BytesBlob implements Blob {
-  const _BytesBlob(this.data, {this.type = 'application/octet-stream'});
+  const _BytesBlob(this.data, {String? type})
+      : type = type ?? 'application/octet-stream';
 
   final Uint8List data;
 
@@ -51,8 +59,8 @@ class _BytesBlob implements Blob {
   Future<Uint8List> bytes() async => data;
 
   @override
-  Blob slice(int start, [int? end]) {
-    return _BytesBlob(data.sublist(start, end));
+  Blob slice(int start, [int? end, String? contentType]) {
+    return _BytesBlob(data.sublist(start, end), type: contentType ?? type);
   }
 
   @override
@@ -63,5 +71,71 @@ class _BytesBlob implements Blob {
   @override
   Future<String> text() async {
     return utf8.decode(data);
+  }
+}
+
+// Stream wraped [Blob] impl.
+class _StreamBlob implements Blob {
+  _StreamBlob(
+    Stream<Uint8List> stream, {
+    required this.size,
+    String? type,
+  })  : upstream = ClonableStream(stream),
+        type = type ?? 'application/octet-stream';
+
+  final ClonableStream<Uint8List> upstream;
+
+  @override
+  final String type;
+
+  @override
+  final int size;
+
+  @override
+  Future<ByteBuffer> byteBuffer() async => (await bytes()).buffer;
+
+  @override
+  Future<Uint8List> bytes() async {
+    final bytes = Uint8List(size);
+    await for (final chunk in stream()) {
+      bytes.addAll(chunk);
+    }
+
+    return bytes;
+  }
+
+  @override
+  Stream<Uint8List> stream() => upstream.clone();
+
+  @override
+  Future<String> text() {
+    return utf8.decodeStream(stream());
+  }
+
+  @override
+  Blob slice(int start, [int? end, String? contentType]) {
+    return _StreamBlob(
+      stream().slice(size, start, end),
+      size: (end ?? size) - start,
+      type: contentType ?? type,
+    );
+  }
+}
+
+extension on Stream<Uint8List> {
+  Stream<Uint8List> slice(int size, int start, [int? end]) async* {
+    int offset = 0;
+    int effectiveEnd = end ?? size;
+
+    await for (final chunk in this) {
+      if (offset >= effectiveEnd) break;
+
+      int chunkLength = chunk.lengthInBytes;
+      int startOffset = max(0, start - offset);
+      int endOffset = min(offset + chunkLength, effectiveEnd) - offset;
+
+      yield chunk.sublist(startOffset, endOffset);
+      offset += chunkLength;
+    }
   }
 }
