@@ -44,8 +44,11 @@ enum Version {
       'HTTP/0.9' => Version.http09,
       'HTTP/1.0' => Version.http10,
       'HTTP/1.1' => Version.http11,
+      'HTTP/2.0' => Version.http20,
+      'HTTP/3.0' => Version.http30,
       String(startsWith: final s) when s('HTTP/1') => Version.http11,
       String(startsWith: final s) when s('HTTP/2') => Version.http20,
+      String(startsWith: final s) when s('HTTP/3') => Version.http30,
       _ => throw ArgumentError('Unsupported HTTP version: $version'),
     };
   }
