@@ -42,7 +42,7 @@ extension type const MimeType._(_ExtensionMediaType _) implements Object {
   }
 
   /// Creates a new [MimeType] from [String].
-  factory MimeType.fromString(String input) {
+  factory MimeType.parse(String input) {
     try {
       return MimeType._(_ExtensionMediaType.parse(input));
     } on FormatException catch (e) {
@@ -51,7 +51,7 @@ extension type const MimeType._(_ExtensionMediaType _) implements Object {
   }
 
   /// Creates a new [MimeType] from [bytes].
-  factory MimeType.fromBytes(Iterable<int> bytes) {
+  factory MimeType.bytes(Iterable<int> bytes) {
     final safeBytes =
         bytes.take(resolver.magicNumbersMaxLength).toList(growable: false);
     final type = resolver.lookup('', headerBytes: safeBytes);
@@ -59,7 +59,7 @@ extension type const MimeType._(_ExtensionMediaType _) implements Object {
       throw MimeTypeCreateFailException._('Could not sniff the MIME-type');
     }
 
-    return MimeType.fromString(type);
+    return MimeType.parse(type);
   }
 
   /// Creates a new [MimeType] from [extension].

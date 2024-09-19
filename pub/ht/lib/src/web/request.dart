@@ -71,7 +71,7 @@ abstract interface class Request implements BaseHttpMessage {
       headers: headers,
       body: Blob.text(
         serializeURLSearchParams(body),
-        type: 'application/x-www-form-urlencoded',
+        type: MimeType.form,
       ),
     );
   }
@@ -94,7 +94,18 @@ abstract interface class Request implements BaseHttpMessage {
       url,
       method: method ?? Method.get.toString(),
       headers: headers,
-      body: Blob.text(body),
+      body: Blob.text(body, type: headers?.get('content-type')),
+    );
+  }
+
+  /// Creates a new [Request] from [String]
+  factory Request.json(Uri url,
+      {String? method, Headers? headers, required dynamic body}) {
+    return _BlobRequestImpl(
+      url,
+      method: method ?? Method.get.toString(),
+      headers: headers,
+      body: Blob.text(body, type: ''),
     );
   }
 
