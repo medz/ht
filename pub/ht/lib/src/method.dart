@@ -327,37 +327,31 @@ enum Method {
   ;
 
   /// The method emun name patch.
-  final String? $patch;
-  const Method([this.$patch]);
+  final String? _patch;
+  const Method([String? name]) : _patch = name;
 
-  factory Method.fromString(String method) {
-    for (final value in Method.values) {
-      if (value.toString() == method.toUpperCase()) {
-        return value;
-      }
-    }
+  /// Gets the string value representation of the HTTP method.
+  ///
+  /// This getter returns the canonical string representation of the HTTP method,
+  /// which is used in actual HTTP requests. For most methods, this is simply the
+  /// uppercase name of the enum. For some special cases (like 'BASELINE-CONTROL'),
+  /// it returns a custom string value.
+  ///
+  /// Examples:
+  /// - For `Method.get`, returns "GET"
+  /// - For `Method.baselineControl`, returns "BASELINE-CONTROL"
+  ///
+  /// This value is particularly useful when constructing HTTP requests or
+  /// when needing to compare against standard HTTP method strings.
+  String get value => (_patch ?? name).toUpperCase();
 
-    throw UnsupportedError('This is $method not supported.');
+  factory Method.parse(String method) {
+    return values.firstWhere(
+      (e) => e.value == method.toUpperCase(),
+      orElse: () => throw UnsupportedError('This is $method not supported.'),
+    );
   }
 
   @override
-  toString() => ($patch ?? name).toUpperCase();
-
-  /// Whether a method is considered "safe", meaning the request is essentially read-only.
-  ///
-  /// See [the spec](https://tools.ietf.org/html/rfc7231#section-4.2.1) for more details.
-  bool isSafe() {
-    return switch (this) {
-      get ||
-      head ||
-      options ||
-      pri ||
-      propFind ||
-      report ||
-      search ||
-      trace =>
-        true,
-      _ => false,
-    };
-  }
+  toString() => value;
 }

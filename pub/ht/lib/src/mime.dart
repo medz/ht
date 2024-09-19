@@ -70,7 +70,7 @@ extension type const MimeType._(_ExtensionMediaType _) implements Object {
           'Not found MIME-type for "$extension"');
     }
 
-    return MimeType.fromString(type);
+    return MimeType.parse(type);
   }
 
   // Commons
