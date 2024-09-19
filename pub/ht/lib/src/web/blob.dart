@@ -7,11 +7,16 @@ import '../utils/clonable_stream.dart';
 /// Binary large object
 abstract interface class Blob {
   /// Creates a new [Blob] from [bytes].
-  const factory Blob.fromBytes(Uint8List bytes, {String? type}) = _BytesBlob;
+  const factory Blob.bytes(Uint8List bytes, {String? type}) = _BytesBlob;
 
   /// Creates a new [Blob] from [stream].
-  factory Blob.fromStream(Stream<Uint8List> stream,
+  factory Blob.stream(Stream<Uint8List> stream,
       {String? type, required int size}) = _StreamBlob;
+
+  /// Creates a new [Blob] from [String].
+  factory Blob.text(String str, {String? type}) {
+    return Blob.bytes(utf8.encode(str), type: type ?? 'text/plain');
+  }
 
   /// The total size of the [Blob] in bytes.
   int get size;

@@ -47,7 +47,7 @@ const _singleValueNames = [
 ];
 
 /// HTTP headers like MDN Headers API.
-extension type const Headers._(List<(String, String)> _)
+extension type Headers._(List<(String, String)> _)
     implements Iterable<(String, String)> {
   /// Creates a new Spry headers instance.
   factory Headers([Map<String, String>? init]) {
@@ -85,10 +85,11 @@ extension type const Headers._(List<(String, String)> _)
   ///
   /// **Note**: The method not support returns `set-cookoe` name, if
   /// you need get `set-cookie` values, please using [getSetCookie] method.
-  String get(String name) {
-    return where(_createIgnoreCaseTesterWithoutSetCookie(name))
-        .map((e) => e.$2)
-        .join(', ');
+  String? get(String name) {
+    final values =
+        where(_createIgnoreCaseTesterWithoutSetCookie(name)).map((e) => e.$2);
+    if (values.isEmpty) return null;
+    return values.join(', ');
   }
 
   /// Returns the `set-cookie` name header values.
@@ -114,12 +115,12 @@ extension type const Headers._(List<(String, String)> _)
 
   /// Returns the headers all values.
   Iterable<String> values() sync* {
-    for (final name in keys()) {
+    for (final (name, value) in _) {
       if (name.toLowerCase() == 'set-cookie') {
         continue;
       }
 
-      yield get(name);
+      yield value;
     }
 
     yield* getSetCookie();

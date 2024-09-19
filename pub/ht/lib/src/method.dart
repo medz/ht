@@ -330,6 +330,19 @@ enum Method {
   final String? $patch;
   const Method([this.$patch]);
 
+  factory Method.fromString(String method) {
+    for (final value in Method.values) {
+      if (value.toString() == method.toUpperCase()) {
+        return value;
+      }
+    }
+
+    throw UnsupportedError('This is $method not supported.');
+  }
+
+  @override
+  toString() => ($patch ?? name).toUpperCase();
+
   /// Whether a method is considered "safe", meaning the request is essentially read-only.
   ///
   /// See [the spec](https://tools.ietf.org/html/rfc7231#section-4.2.1) for more details.

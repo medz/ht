@@ -27,7 +27,7 @@ extension type FormData._(List<(String, FormDataEntry)> _)
   void append(String name, Object value, [String filename = 'blob']) {
     final FormDataEntry entry = switch (value) {
       File file => FileFormDataEntry(file),
-      Blob blob => FileFormDataEntry(File.fromStream(blob.stream(), filename,
+      Blob blob => FileFormDataEntry(File.stream(blob.stream(), filename,
           size: blob.size, type: blob.type)),
       _ => StringFormDataEntry(value.toString()),
     };

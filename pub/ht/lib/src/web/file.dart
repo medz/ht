@@ -3,14 +3,14 @@ import 'dart:typed_data';
 import 'blob.dart';
 
 abstract interface class File implements Blob {
-  factory File.fromBytes(Uint8List bytes, String name,
+  factory File.bytes(Uint8List bytes, String name,
           {String? type, int? lastModified}) =>
-      _FileImpl(Blob.fromBytes(bytes, type: type), name, lastModified ?? 0);
+      _FileImpl(Blob.bytes(bytes, type: type), name, lastModified ?? 0);
 
-  factory File.fromStream(Stream<Uint8List> stream, String name,
+  factory File.stream(Stream<Uint8List> stream, String name,
           {String? type, int? lastModified, required int size}) =>
-      _FileImpl(Blob.fromStream(stream, size: size, type: type), name,
-          lastModified ?? 0);
+      _FileImpl(
+          Blob.stream(stream, size: size, type: type), name, lastModified ?? 0);
 
   /// Name of the file referenced by the File object.
   String get name;
