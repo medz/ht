@@ -1,26 +1,27 @@
 /// HTTP response status codes.
 ///
-/// As defined by [rfc7231 section 6](https://tools.ietf.org/html/rfc7231#section-6).
-/// [Read more](https://developer.mozilla.org/en-US/docs/Web/HTTP/Status)
+/// This enum represents standard HTTP status codes as defined in RFC 7231 and other RFCs.
+/// Each status code includes its numeric value and a brief description.
+///
+/// Status codes are grouped into five classes:
+/// - 1xx: Informational - Request received, continuing process
+/// - 2xx: Success - The action was successfully received, understood, and accepted
+/// - 3xx: Redirection - Further action needs to be taken in order to complete the request
+/// - 4xx: Client Error - The request contains bad syntax or cannot be fulfilled
+/// - 5xx: Server Error - The server failed to fulfill an apparently valid request
+///
+/// For more information, see:
+/// - [RFC 7231 Section 6](https://tools.ietf.org/html/rfc7231#section-6)
+/// - [MDN HTTP Status](https://developer.mozilla.org/en-US/docs/Web/HTTP/Status)
 enum StatusCode {
-  /// 100 Continue
-  ///
-  /// This interim response indicates that everything so far is OK and that
-  /// the client should continue the request, or ignore the response if
-  /// the request is already finished.
+  // 1xx - Informational
+  /// 100 Continue: The server has received the request headers and the client should proceed to send the request body.
   continue_(100, 'Continue'),
 
-  /// 101 Switching Protocols
-  ///
-  /// This code is sent in response to an Upgrade request header from the
-  /// client, and indicates the protocol the server is switching to.
+  /// 101 Switching Protocols: The requester has asked the server to switch protocols and the server has agreed to do so.
   switchingProtocols(101, 'Switching Protocols'),
 
-  /// 103 Early Hints
-  ///
-  /// This status code is primarily intended to be used with the Link header,
-  /// letting the user agent start preloading resources while the server
-  /// prepares a response.
+  /// 103 Early Hints: Used to return some response headers before final HTTP message.
   earlyHints(103, 'Early Hints'),
 
   /// 200 Ok
@@ -418,7 +419,15 @@ enum StatusCode {
   // -------------------
   ;
 
+  /// The numeric value of the status code.
   final int value;
+
+  /// A brief textual description of the status code.
   final String reason;
+
+  /// Constructs a [StatusCode] with the given numeric [value] and [reason].
+  ///
+  /// [value]: The numeric HTTP status code.
+  /// [reason]: A brief description of the status code.
   const StatusCode(this.value, this.reason);
 }
