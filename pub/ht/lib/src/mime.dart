@@ -121,17 +121,17 @@ extension type const MimeType._(_ExtensionMediaType _) implements Object {
   static final x7z = MimeType('application', 'x-7z-compressed');
 }
 
-/// The MIME-type properties.
+/// Extension to provide properties for the [MimeType] class.
 extension MimeTypeProperties on MimeType {
-  /// The primary identifier of the [MIME].
+  /// Retrieves the primary type of the MIME.
   String get base => _.type;
 
-  /// The secondary identifier of the [MIME].
+  /// Retrieves the subtype of the MIME.
   String get sub => _.subtype;
 
-  /// Returns the essence [MIME] type string.
+  /// Returns the full MIME type string.
   String get essence => _.mimeType;
 
-  /// Returns the [MIME] params.
+  /// Returns the parameters associated with the MIME type.
   Map<String, String> get params => _.parameters;
 }

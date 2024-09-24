@@ -345,6 +345,22 @@ enum Method {
   /// when needing to compare against standard HTTP method strings.
   String get value => (_patch ?? name).toUpperCase();
 
+  /// Parses a string representation of an HTTP method and returns the corresponding `Method` enum value.
+  ///
+  /// This factory constructor takes a string [method], converts it to uppercase,
+  /// and attempts to match it with one of the enum values. If a match is found,
+  /// the corresponding `Method` enum value is returned. If no match is found,
+  /// an `UnsupportedError` is thrown.
+  ///
+  /// Example:
+  /// ```dart
+  /// var method = Method.parse('get'); // returns Method.get
+  /// var method = Method.parse('POST'); // returns Method.post
+  /// var method = Method.parse('unknown'); // throws UnsupportedError
+  /// ```
+  ///
+  /// Throws:
+  /// - `UnsupportedError` if the [method] is not supported.
   factory Method.parse(String method) {
     return values.firstWhere(
       (e) => e.value == method.toUpperCase(),

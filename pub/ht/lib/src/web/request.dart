@@ -4,8 +4,9 @@ import 'dart:typed_data';
 import '../method.dart';
 import '../mime.dart';
 import '../utils/clonable_stream.dart';
-import '../utils/serialize_url_search_params.dart';
+import '../utils/formdata_utils.dart';
 import '../utils/stateful_stream.dart';
+import '../utils/url_search_params_utils.dart';
 import 'base_http_message.dart';
 import 'blob.dart';
 import 'formdata.dart';
@@ -104,14 +105,29 @@ abstract interface class Request implements BaseHttpMessage {
     Headers? headers,
     required URLSearchParams body,
   }) {
-    return _BlobRequestImpl(
+    return Request.blob(
       url,
-      method: method ?? Method.get.toString(),
+      method: method,
       headers: headers,
       body: Blob.text(
         serializeURLSearchParams(body),
         type: MimeType.form.toString(),
       ),
+    );
+  }
+
+  /// Creates a [Request] from [FormData].
+  factory Request.formData(
+    Uri url, {
+    String? method,
+    Headers? headers,
+    required FormData body,
+  }) {
+    return Request.blob(
+      url,
+      headers: headers,
+      method: method,
+      body: serializeFromData(body),
     );
   }
 
@@ -258,9 +274,26 @@ class _Request implements Request {
   }
 
   @override
-  Future<FormData> formData() {
-    // TODO: implement formData
-    throw UnimplementedError();
+  Future<FormData> formData() async {
+    final contentType = switch (headers.get("content-type")) {
+      String value when value.isNotEmpty => MimeType.parse(value),
+      _ => null,
+    };
+    if (contentType?.essence == MimeType.form.essence) {
+      final fromData = FormData();
+      for (final (key, value) in parseURLSearchParams(await text())) {
+        fromData.append(key, value);
+      }
+
+      return fromData;
+    }
+
+    final boundary = contentType?.params['boundary'];
+    if (boundary != null && contentType?.essence == MimeType.formData.essence) {
+      return await parseFormData(boundary, (await blob()).stream());
+    }
+
+    throw StateError('The content type is not a valid form data type.');
   }
 
   @override

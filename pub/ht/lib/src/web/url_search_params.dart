@@ -1,6 +1,18 @@
 /// A web API like [URLSearchParams] suitable for Dart.
 extension type URLSearchParams._(List<(String, String)> _)
     implements Iterable<(String, String)> {
+  /// Creates a new [URLSearchParams] object.
+  factory URLSearchParams([Map<String, String>? init]) {
+    final inner = URLSearchParams._([]);
+    if (init != null && init.isNotEmpty) {
+      for (final e in init.entries) {
+        inner.append(e.key, e.value);
+      }
+    }
+
+    return inner;
+  }
+
   /// Append a new name-value pair to the query string.
   void append(String name, String value) {
     _.add((name, value));
