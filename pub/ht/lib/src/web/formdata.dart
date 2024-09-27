@@ -3,7 +3,7 @@ import 'package:ht/src/web/blob.dart';
 
 import 'file.dart';
 
-base class FormDataEntry<T> {
+sealed class FormDataEntry<T> {
   const FormDataEntry(this.value);
 
   final T value;

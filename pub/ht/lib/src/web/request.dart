@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import '../method.dart';
 import '../mime.dart';
 import '../utils/clonable_stream.dart';
+import '../utils/errors.dart';
 import '../utils/formdata_utils.dart';
 import '../utils/stateful_stream.dart';
 import '../utils/url_search_params_utils.dart';
@@ -179,41 +180,6 @@ abstract interface class Request implements BaseHttpMessage {
   /// The request method.
   String get method;
 
-  /// The request headers.
-  Headers get headers;
-
-  /// Indicates whether the body has been read.
-  @override
-  bool get bodyUsed;
-
-  /// Retrieves the request body as a [Blob].
-  ///
-  /// Throws a [StateError] if the body has already been read.
-  @override
-  Future<Blob> blob();
-
-  /// Retrieves the request body as a [ByteBuffer].
-  @override
-  Future<ByteBuffer> byteBuffer();
-
-  /// Retrieves the request body as a [Uint8List].
-  @override
-  Future<Uint8List> bytes();
-
-  /// Retrieves the request body as [FormData].
-  @override
-  Future<FormData> formData();
-
-  /// Retrieves the request body as a [String].
-  @override
-  Future<String> text();
-
-  /// Retrieves the request body as a JSON object.
-  ///
-  /// Returns null if the body is empty.
-  @override
-  Future<dynamic> json();
-
   /// Creates a clone of this request.
   ///
   /// Throws a [StateError] if the body has already been read.
@@ -221,7 +187,7 @@ abstract interface class Request implements BaseHttpMessage {
 }
 
 /// Request impl.
-class _Request implements Request {
+class _Request with BaseHttpMessage implements Request {
   _Request(
     this.url, {
     this.method = 'get',
@@ -245,76 +211,9 @@ class _Request implements Request {
   bool get bodyUsed => body?.isListened ?? false;
 
   @override
-  Future<Blob> blob() async {
-    if (bodyUsed) {
-      throw _createRequestBodyUsedError();
-    }
-
-    final contentLength = headers.get('content-length');
-    final size = switch (contentLength?.trim()) {
-      String(isEmpty: true) || null => null,
-      String value => int.tryParse(value),
-    };
-
-    if (body != null && size != null && size > 0) {
-      return Blob.stream(body!, size: size, type: headers.get('content-type'));
-    }
-
-    return Blob.bytes(Uint8List(0), type: headers.get('content-type'));
-  }
-
-  @override
-  Future<ByteBuffer> byteBuffer() {
-    return blob().then((blob) => blob.byteBuffer());
-  }
-
-  @override
-  Future<Uint8List> bytes() {
-    return blob().then((blob) => blob.bytes());
-  }
-
-  @override
-  Future<FormData> formData() async {
-    final contentType = switch (headers.get("content-type")) {
-      String value when value.isNotEmpty => MimeType.parse(value),
-      _ => null,
-    };
-    if (contentType?.essence == MimeType.form.essence) {
-      final fromData = FormData();
-      for (final (key, value) in parseURLSearchParams(await text())) {
-        fromData.append(key, value);
-      }
-
-      return fromData;
-    }
-
-    final boundary = contentType?.params['boundary'];
-    if (boundary != null && contentType?.essence == MimeType.formData.essence) {
-      return await parseFormData(boundary, (await blob()).stream());
-    }
-
-    throw StateError('The content type is not a valid form data type.');
-  }
-
-  @override
-  Future<String> text() {
-    return blob().then((blob) => blob.text());
-  }
-
-  @override
-  Future json() async {
-    if (body != null) {
-      return convert.json.decode(await text());
-    }
-
-    return null;
-  }
-
-  @override
   Request clone() {
-    if (bodyUsed) {
-      throw _createRequestBodyUsedError();
-    } else if (body == null) {
+    _validateBodyNotRead();
+    if (body == null) {
       return _Request(url, method: method, headers: headers);
     }
 
@@ -327,6 +226,12 @@ class _Request implements Request {
       headers: headers,
       body: StatefulStream(stream.clone()),
     );
+  }
+
+  void _validateBodyNotRead() {
+    if (bodyUsed) {
+      throw throwHttpBodyUsedError();
+    }
   }
 }
 
@@ -361,14 +266,8 @@ class _BlobRequestImpl extends _Request {
 
   @override
   Request clone() {
-    if (bodyUsed) {
-      throw _createRequestBodyUsedError();
-    }
+    _validateBodyNotRead();
 
     return _BlobRequestImpl(url, method: method, headers: headers, body: inner);
   }
-}
-
-Error _createRequestBodyUsedError() {
-  return StateError('The request body used.');
 }
