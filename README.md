@@ -1,9 +1,9 @@
 # ht
 
-`ht` means **HTTP Types**. It provides shared, framework-agnostic HTTP abstractions for:
+`ht` means **HTTP Types**. It provides shared, framework-agnostic, fetch-first HTTP abstractions:
 
-- Fetch-style client APIs (`Request`, `Response`, `Headers`, `URLSearchParams`, `Blob`, `File`, `FormData`)
-- Server-side APIs (`ServerRequest`, `ServerResponse`, `ServerHandler`, middleware composition)
+- Fetch primitives (`Request`, `Response`, `Headers`, `URLSearchParams`, `Blob`, `File`, `FormData`)
+- Fetch middleware composition (`FetchHandler`, `FetchMiddleware`, `composeFetchMiddleware`)
 - Common protocol types (`HttpMethod`, `HttpStatus`, `HttpVersion`, `MimeType`)
 
 ## Example
@@ -28,8 +28,25 @@ void main() async {
 }
 ```
 
+## Middleware Example
+
+```dart
+import 'package:ht/ht.dart';
+
+final app = composeFetchMiddleware(
+  (request) => Response.text('ok'),
+  [
+    (request, next) async {
+      final response = await next(request);
+      response.headers.set('x-powered-by', 'ht');
+      return response;
+    },
+  ],
+);
+```
+
 ## Notes
 
 - `body` follows one-time consumption semantics (`bodyUsed` becomes `true` after reading).
 - `clone()` is supported for unread request/response bodies.
-- `FormData.encodeMultipart()` is available for server/client adapters that need raw multipart payloads.
+- `FormData.encodeMultipart()` is available for adapters that need raw multipart payloads.
