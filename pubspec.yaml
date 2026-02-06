@@ -1,15 +1,23 @@
 name: ht
-description: Common types of HTTP operations
-version: 0.0.0
+description: Fetch-style HTTP types and protocol abstractions for Dart.
+version: 0.1.0
 repository: https://github.com/medz/ht
+homepage: https://github.com/medz/ht
+issue_tracker: https://github.com/medz/ht/issues
+documentation: https://github.com/medz/ht#readme
+topics:
+  - http
+  - fetch
+  - web
+  - types
 
 environment:
   sdk: ^3.10.0
 
 dependencies:
   async: ^2.13.0
-  mime: ^2.0.0
   http_parser: ^4.1.2
+  mime: ^2.0.0
 
 dev_dependencies:
   lints: ^6.1.0

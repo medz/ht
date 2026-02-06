@@ -26,7 +26,7 @@ Or add it manually to `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  ht: ^0.0.0
+  ht: ^0.1.0
 ```
 
 ## Scope
