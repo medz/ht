@@ -1,47 +1,47 @@
 # ht
 
-`ht` 是 **HTTP Types** 的缩写，提供一套以 Fetch 风格为中心的 Dart HTTP 抽象类型。
+`ht` stands for **HTTP Types**. It provides a fetch-first set of Dart HTTP abstractions.
 
-这个包只做“类型与语义层”，不做具体网络请求发送或服务器运行时实现。
+This package focuses on the **type and semantics layer** only. It does not implement an HTTP client or server runtime.
 
-## 特性
+## Features
 
-- Fetch 风格基础类型：`Request`、`Response`、`Headers`、`URLSearchParams`、`Blob`、`File`、`FormData`
-- 协议辅助类型：`HttpMethod`、`HttpStatus`、`HttpVersion`、`MimeType`
-- 统一 body 读取语义（一次消费）、克隆语义、header 归一化语义
-- 可作为上层 client / server 框架的共享类型层
+- Fetch-style primitives: `Request`, `Response`, `Headers`, `URLSearchParams`, `Blob`, `File`, `FormData`
+- Protocol helpers: `HttpMethod`, `HttpStatus`, `HttpVersion`, `MimeType`
+- Consistent body-read semantics (single-consume), clone semantics, and header normalization
+- Designed as a shared HTTP type layer for downstream client/server frameworks
 
-## 安装
+## Installation
 
 ```bash
 dart pub add ht
 ```
 
-或在 `pubspec.yaml` 中手动添加：
+Or add it manually to `pubspec.yaml`:
 
 ```yaml
 dependencies:
   ht: ^0.0.0
 ```
 
-## 设计边界
+## Scope
 
-- 本包不提供 HTTP client
-- 本包不提供 HTTP server
-- 本包不内置路由/中间件框架
+- No HTTP client implementation
+- No HTTP server implementation
+- No routing or middleware framework
 
-目标是让下游实现复用一致的 HTTP 类型与行为约束。
+The goal is to provide stable and reusable HTTP types and behavior contracts.
 
-## 核心 API
+## Core API
 
-| 分类 | 类型 |
+| Category | Types |
 | --- | --- |
-| 协议 | `HttpMethod`, `HttpStatus`, `HttpVersion`, `MimeType` |
-| 消息 | `Request`, `Response`, `BodyMixin`, `BodyInit` |
+| Protocol | `HttpMethod`, `HttpStatus`, `HttpVersion`, `MimeType` |
+| Message | `Request`, `Response`, `BodyMixin`, `BodyInit` |
 | Header/URL | `Headers`, `URLSearchParams` |
-| 二进制与表单 | `Blob`, `File`, `FormData` |
+| Binary/Form | `Blob`, `File`, `FormData` |
 
-## 快速示例
+## Quick Example
 
 ```dart
 import 'package:ht/ht.dart';
@@ -64,15 +64,15 @@ Future<void> main() async {
 }
 ```
 
-## Body 语义
+## Body Semantics
 
-`Request` / `Response` 的 body 采用一次消费模型：
+`Request` and `Response` use a single-consume body model:
 
-- 首次调用 `text()` / `bytes()` / `json()` / `blob()` 或读取 `body` 流后，`bodyUsed == true`
-- 再次读取同一实例会抛出 `StateError`
-- 如需重复读取，先 `clone()`
+- After the first `text()` / `bytes()` / `json()` / `blob()` call (or stream read), `bodyUsed == true`
+- Reading the same instance again throws `StateError`
+- Use `clone()` when multiple reads are required
 
-## FormData 示例
+## FormData Example
 
 ```dart
 import 'package:ht/ht.dart';
@@ -89,7 +89,7 @@ void main() {
 }
 ```
 
-## 开发
+## Development
 
 ```bash
 dart pub get
