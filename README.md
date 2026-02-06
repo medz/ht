@@ -1,5 +1,9 @@
 # ht
 
+[![CI](https://github.com/medz/ht/actions/workflows/ci.yml/badge.svg)](https://github.com/medz/ht/actions/workflows/ci.yml)
+[![Dart SDK](https://img.shields.io/badge/Dart_SDK-%5E3.10.0-0175C2?logo=dart)](https://dart.dev/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](./LICENSE)
+
 `ht` stands for **HTTP Types**. It provides a fetch-first set of Dart HTTP abstractions.
 
 This package focuses on the **type and semantics layer** only. It does not implement an HTTP client or server runtime.
