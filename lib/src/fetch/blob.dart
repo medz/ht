@@ -78,35 +78,19 @@ class Blob implements block.Block {
   }
 
   static Object _normalizePart(Object part) {
-    if (part is Blob) {
-      return part._inner;
-    }
-
-    if (part is block.Block) {
-      return part;
-    }
-
-    if (part is ByteBuffer) {
-      return ByteData.sublistView(part.asUint8List());
-    }
-
-    if (part is Uint8List) {
-      return Uint8List.fromList(part);
-    }
-
-    if (part is List<int>) {
-      return Uint8List.fromList(part);
-    }
-
-    if (part is String) {
-      return part;
-    }
-
-    throw ArgumentError.value(
-      part,
-      'parts',
-      'Unsupported blob part type: ${part.runtimeType}',
-    );
+    return switch (part) {
+      final Blob blob => blob._inner,
+      final block.Block blockPart => blockPart,
+      final ByteBuffer buffer => ByteData.sublistView(buffer.asUint8List()),
+      final Uint8List bytes => Uint8List.fromList(bytes),
+      final List<int> bytes => Uint8List.fromList(bytes),
+      final String text => text,
+      _ => throw ArgumentError.value(
+        part,
+        'parts',
+        'Unsupported blob part type: ${part.runtimeType}',
+      ),
+    };
   }
 
   static String _normalizeType(String input) {
