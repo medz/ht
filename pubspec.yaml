@@ -1,6 +1,6 @@
 name: ht
 description: Fetch-style HTTP types and protocol abstractions for Dart.
-version: 0.1.0
+version: 0.2.0
 repository: https://github.com/medz/ht
 homepage: https://github.com/medz/ht
 issue_tracker: https://github.com/medz/ht/issues
@@ -16,6 +16,7 @@ environment:
 
 dependencies:
   async: ^2.13.0
+  block: ^1.0.0
   http_parser: ^4.1.2
   mime: ^2.0.0
 

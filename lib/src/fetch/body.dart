@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:async/async.dart';
+import 'package:block/block.dart' as block;
 
 import 'blob.dart';
 import 'form_data.dart';
@@ -79,63 +80,47 @@ final class BodyData {
        _branch = branch;
 
   factory BodyData.fromInit(Object? init) {
-    if (init == null) {
-      return BodyData.empty();
-    }
-
-    if (init is BodyData) {
-      return init.clone();
-    }
-
-    if (init is String) {
-      return BodyData.bytes(
-        utf8.encode(init),
+    return switch (init) {
+      null => BodyData.empty(),
+      final BodyData data => data.clone(),
+      final String text => BodyData.bytes(
+        utf8.encode(text),
         defaultContentType: 'text/plain; charset=utf-8',
-      );
-    }
-
-    if (init is Uint8List) {
-      return BodyData.bytes(init);
-    }
-
-    if (init is ByteBuffer) {
-      return BodyData.bytes(init.asUint8List());
-    }
-
-    if (init is List<int>) {
-      return BodyData.bytes(init);
-    }
-
-    if (init is Blob) {
-      return BodyData.bytes(
-        init.copyBytes(),
-        defaultContentType: init.type.isEmpty ? null : init.type,
-      );
-    }
-
-    if (init is URLSearchParams) {
-      return BodyData.bytes(
-        utf8.encode(init.toString()),
+      ),
+      final Uint8List bytes => BodyData.bytes(bytes),
+      final ByteBuffer buffer => BodyData.bytes(buffer.asUint8List()),
+      final List<int> bytes => BodyData.bytes(bytes),
+      // Keep Blob ahead of block.Block for explicit fetch-type handling.
+      final Blob blob => _fromBlock(blob),
+      final block.Block blockBody => _fromBlock(blockBody),
+      final URLSearchParams params => BodyData.bytes(
+        utf8.encode(params.toString()),
         defaultContentType: 'application/x-www-form-urlencoded; charset=utf-8',
-      );
-    }
+      ),
+      final FormData formData => _fromFormData(formData),
+      final Stream<List<int>> stream => BodyData.stream(stream),
+      _ => throw ArgumentError.value(
+        init,
+        'init',
+        'Unsupported body type: ${init.runtimeType}',
+      ),
+    };
+  }
 
-    if (init is FormData) {
-      final payload = init.encodeMultipart();
-      return BodyData.bytes(
-        payload.bytes,
-        defaultContentType: payload.contentType,
-      );
-    }
+  static BodyData _fromBlock(block.Block value) {
+    return BodyData.stream(
+      value.stream(),
+      defaultContentType: value.type.isEmpty ? null : value.type,
+      defaultContentLength: value.size,
+    );
+  }
 
-    if (init is Stream<List<int>>) {
-      return BodyData.stream(init);
-    }
-
-    throw ArgumentError.value(
-      init,
-      'init',
-      'Unsupported body type: ${init.runtimeType}',
+  static BodyData _fromFormData(FormData formData) {
+    final payload = formData.encodeMultipart();
+    return BodyData.stream(
+      payload.stream,
+      defaultContentType: payload.contentType,
+      defaultContentLength: payload.contentLength,
     );
   }
 

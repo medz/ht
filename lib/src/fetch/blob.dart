@@ -1,99 +1,96 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
+import 'package:block/block.dart' as block;
+
 /// Binary large object.
-class Blob {
+class Blob implements block.Block {
   Blob([Iterable<Object> parts = const <Object>[], String type = ''])
-    : _bytes = _concatenate(parts),
-      type = _normalizeType(type);
+    : this._fromNormalized(_normalizeParts(parts), _normalizeType(type));
 
   Blob.bytes(List<int> bytes, {String type = ''})
-    : _bytes = Uint8List.fromList(bytes),
-      type = _normalizeType(type);
+    : this._fromNormalized(<Object>[
+        Uint8List.fromList(bytes),
+      ], _normalizeType(type));
 
   Blob.text(
     String text, {
     String type = 'text/plain;charset=utf-8',
     Encoding encoding = utf8,
-  }) : _bytes = Uint8List.fromList(encoding.encode(text)),
-       type = _normalizeType(type);
+  }) : this._fromNormalized(<Object>[
+         Uint8List.fromList(encoding.encode(text)),
+       ], _normalizeType(type));
 
-  final Uint8List _bytes;
+  Blob._fromNormalized(List<Object> parts, String normalizedType)
+    : this._fromBlock(
+        block.Block(parts, type: normalizedType),
+        type: normalizedType,
+      );
+
+  Blob._fromBlock(this._inner, {required this.type});
+
+  final block.Block _inner;
 
   /// MIME type hint.
+  @override
   final String type;
 
-  int get size => _bytes.length;
+  @override
+  int get size => _inner.size;
 
   /// Returns a copy of underlying bytes.
-  Future<Uint8List> bytes() async => copyBytes();
-
-  /// Synchronous copy helper for internal body assembly.
-  Uint8List copyBytes() => Uint8List.fromList(_bytes);
-
-  Future<String> text([Encoding encoding = utf8]) async {
-    return encoding.decode(_bytes);
+  Future<Uint8List> bytes() async {
+    return Uint8List.fromList(await _inner.arrayBuffer());
   }
 
-  Stream<Uint8List> stream({int chunkSize = 16 * 1024}) async* {
+  @override
+  Future<Uint8List> arrayBuffer() => bytes();
+
+  @override
+  Future<String> text([Encoding encoding = utf8]) async {
+    if (identical(encoding, utf8)) {
+      return _inner.text();
+    }
+
+    return encoding.decode(await bytes());
+  }
+
+  @override
+  Stream<Uint8List> stream({int chunkSize = 16 * 1024}) {
     if (chunkSize <= 0) {
       throw ArgumentError.value(chunkSize, 'chunkSize', 'Must be > 0');
     }
 
-    var offset = 0;
-    while (offset < _bytes.length) {
-      final nextOffset = (offset + chunkSize).clamp(0, _bytes.length);
-      yield Uint8List.sublistView(_bytes, offset, nextOffset);
-      offset = nextOffset;
-    }
+    return _inner.stream(chunkSize: chunkSize);
   }
 
-  Blob slice([int start = 0, int? end, String contentType = '']) {
-    final safeStart = start.clamp(0, _bytes.length);
-    final safeEnd = (end ?? _bytes.length).clamp(safeStart, _bytes.length);
-    return Blob.bytes(
-      Uint8List.sublistView(_bytes, safeStart, safeEnd),
-      type: contentType,
+  @override
+  Blob slice(int start, [int? end, String? contentType]) {
+    final normalizedType = _normalizeType(contentType ?? '');
+    return Blob._fromBlock(
+      _inner.slice(start, end, normalizedType),
+      type: normalizedType,
     );
   }
 
-  static Uint8List _concatenate(Iterable<Object> parts) {
-    final builder = BytesBuilder(copy: false);
+  static List<Object> _normalizeParts(Iterable<Object> parts) {
+    return List<Object>.unmodifiable(parts.map(_normalizePart));
+  }
 
-    for (final part in parts) {
-      if (part is Blob) {
-        builder.add(part._bytes);
-        continue;
-      }
-
-      if (part is ByteBuffer) {
-        builder.add(part.asUint8List());
-        continue;
-      }
-
-      if (part is Uint8List) {
-        builder.add(part);
-        continue;
-      }
-
-      if (part is List<int>) {
-        builder.add(part);
-        continue;
-      }
-
-      if (part is String) {
-        builder.add(utf8.encode(part));
-        continue;
-      }
-
-      throw ArgumentError.value(
+  static Object _normalizePart(Object part) {
+    return switch (part) {
+      final Blob blob => blob._inner,
+      final block.Block blockPart => blockPart,
+      final ByteBuffer buffer => ByteData.sublistView(buffer.asUint8List()),
+      final Uint8List bytes => Uint8List.fromList(bytes),
+      final List<int> bytes => Uint8List.fromList(bytes),
+      final String text => text,
+      _ => throw ArgumentError.value(
         part,
         'parts',
         'Unsupported blob part type: ${part.runtimeType}',
-      );
-    }
-
-    return builder.takeBytes();
+      ),
+    };
   }
 
   static String _normalizeType(String input) {

@@ -8,13 +8,26 @@ import 'file.dart';
 
 /// Multipart body payload generated from [FormData].
 final class MultipartBody {
-  MultipartBody(this.bytes, this.boundary);
+  MultipartBody._({
+    required Stream<Uint8List> Function() streamFactory,
+    required this.boundary,
+    required this.contentLength,
+  }) : _streamFactory = streamFactory;
 
-  final Uint8List bytes;
+  final Stream<Uint8List> Function() _streamFactory;
   final String boundary;
+  final int contentLength;
 
   String get contentType => 'multipart/form-data; boundary=$boundary';
-  int get contentLength => bytes.length;
+  Stream<Uint8List> get stream => _streamFactory();
+
+  Future<Uint8List> bytes() async {
+    final builder = BytesBuilder(copy: false);
+    await for (final chunk in _streamFactory()) {
+      builder.add(chunk);
+    }
+    return builder.takeBytes();
+  }
 }
 
 /// Form-data collection compatible with fetch-style APIs.
@@ -62,44 +75,19 @@ class FormData extends IterableBase<MapEntry<String, Object>> {
 
   MultipartBody encodeMultipart({String? boundary}) {
     final safeBoundary = boundary ?? _generateBoundary();
-    final builder = BytesBuilder(copy: false);
+    final snapshot = List<MapEntry<String, Object>>.unmodifiable(
+      _entries.map((entry) => MapEntry(entry.key, entry.value)),
+    );
 
-    for (final entry in _entries) {
-      builder.add(_utf8('--$safeBoundary\r\n'));
+    return MultipartBody._(
+      streamFactory: () => _encodeMultipart(snapshot, safeBoundary),
+      boundary: safeBoundary,
+      contentLength: _calculateMultipartLength(snapshot, safeBoundary),
+    );
+  }
 
-      if (entry.value is File) {
-        final file = entry.value as File;
-        builder.add(
-          _utf8(
-            'Content-Disposition: form-data; '
-            'name="${_escapeHeaderValue(entry.key)}"; '
-            'filename="${_escapeHeaderValue(file.name)}"\r\n',
-          ),
-        );
-
-        final type = file.type.isEmpty ? 'application/octet-stream' : file.type;
-        builder
-          ..add(_utf8('Content-Type: $type\r\n\r\n'))
-          ..add(file.copyBytes())
-          ..add(_utf8('\r\n'));
-        continue;
-      }
-
-      final value = entry.value as String;
-      builder
-        ..add(
-          _utf8(
-            'Content-Disposition: form-data; '
-            'name="${_escapeHeaderValue(entry.key)}"\r\n\r\n',
-          ),
-        )
-        ..add(_utf8(value))
-        ..add(_utf8('\r\n'));
-    }
-
-    builder.add(_utf8('--$safeBoundary--\r\n'));
-
-    return MultipartBody(builder.takeBytes(), safeBoundary);
+  MultipartBody encodeMultipartStream({String? boundary}) {
+    return encodeMultipart(boundary: boundary);
   }
 
   @override
@@ -113,7 +101,7 @@ class FormData extends IterableBase<MapEntry<String, Object>> {
       }
 
       return File(
-        <Object>[value.copyBytes()],
+        <Object>[value],
         filename,
         type: value.type,
         lastModified: value.lastModified,
@@ -121,11 +109,7 @@ class FormData extends IterableBase<MapEntry<String, Object>> {
     }
 
     if (value is Blob) {
-      return File(
-        <Object>[value.copyBytes()],
-        filename ?? 'blob',
-        type: value.type,
-      );
+      return File(<Object>[value], filename ?? 'blob', type: value.type);
     }
 
     if (value is String) {
@@ -153,6 +137,79 @@ class FormData extends IterableBase<MapEntry<String, Object>> {
     ).join();
     return '----ht-$suffix';
   }
+
+  static Stream<Uint8List> _encodeMultipart(
+    List<MapEntry<String, Object>> entries,
+    String boundary,
+  ) async* {
+    for (final entry in entries) {
+      yield _utf8('--$boundary\r\n');
+
+      if (entry.value is File) {
+        final file = entry.value as File;
+        yield _utf8(
+          'Content-Disposition: form-data; '
+          'name="${_escapeHeaderValue(entry.key)}"; '
+          'filename="${_escapeHeaderValue(file.name)}"\r\n',
+        );
+
+        final type = file.type.isEmpty ? 'application/octet-stream' : file.type;
+        yield _utf8('Content-Type: $type\r\n\r\n');
+        yield* file.stream();
+        yield _utf8('\r\n');
+        continue;
+      }
+
+      final value = entry.value as String;
+      yield _utf8(
+        'Content-Disposition: form-data; '
+        'name="${_escapeHeaderValue(entry.key)}"\r\n\r\n',
+      );
+      yield _utf8(value);
+      yield _utf8('\r\n');
+    }
+
+    yield _utf8('--$boundary--\r\n');
+  }
+
+  static int _calculateMultipartLength(
+    List<MapEntry<String, Object>> entries,
+    String boundary,
+  ) {
+    var total = 0;
+
+    for (final entry in entries) {
+      total += _utf8Length('--$boundary\r\n');
+
+      if (entry.value is File) {
+        final file = entry.value as File;
+        total += _utf8Length(
+          'Content-Disposition: form-data; '
+          'name="${_escapeHeaderValue(entry.key)}"; '
+          'filename="${_escapeHeaderValue(file.name)}"\r\n',
+        );
+
+        final type = file.type.isEmpty ? 'application/octet-stream' : file.type;
+        total += _utf8Length('Content-Type: $type\r\n\r\n');
+        total += file.size;
+        total += _utf8Length('\r\n');
+        continue;
+      }
+
+      final value = entry.value as String;
+      total += _utf8Length(
+        'Content-Disposition: form-data; '
+        'name="${_escapeHeaderValue(entry.key)}"\r\n\r\n',
+      );
+      total += _utf8Length(value);
+      total += _utf8Length('\r\n');
+    }
+
+    total += _utf8Length('--$boundary--\r\n');
+    return total;
+  }
+
+  static int _utf8Length(String value) => utf8.encode(value).length;
 
   static Uint8List _utf8(String value) =>
       Uint8List.fromList(utf8.encode(value));
