@@ -7,14 +7,10 @@ import 'url_search_params.dart';
 
 /// Fetch-like HTTP request model.
 class Request with BodyMixin {
-  Request(
-    this.url, {
-    String method = 'GET',
-    Headers? headers,
-    Object? body,
-  })  : method = _normalizeMethod(method),
-        headers = headers?.clone() ?? Headers(),
-        bodyData = BodyData.fromInit(body) {
+  Request(this.url, {String method = 'GET', Headers? headers, Object? body})
+    : method = _normalizeMethod(method),
+      headers = headers?.clone() ?? Headers(),
+      bodyData = BodyData.fromInit(body) {
     _validateMethodAndBody();
     _applyDefaultBodyHeaders();
   }
@@ -135,7 +131,10 @@ class Request with BodyMixin {
     final normalized = value.trim().toUpperCase();
     if (normalized.isEmpty) {
       throw ArgumentError.value(
-          value, 'method', 'Request method cannot be empty');
+        value,
+        'method',
+        'Request method cannot be empty',
+      );
     }
 
     return normalized;

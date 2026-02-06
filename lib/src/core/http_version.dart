@@ -4,8 +4,7 @@ enum HttpVersion {
   http10(1, 0),
   http11(1, 1),
   http20(2, 0),
-  http30(3, 0),
-  ;
+  http30(3, 0);
 
   const HttpVersion(this.major, this.minor);
 
@@ -25,10 +24,10 @@ enum HttpVersion {
       'HTTP/2' || 'HTTP/2.0' || 'H2' => HttpVersion.http20,
       'HTTP/3' || 'HTTP/3.0' || 'H3' => HttpVersion.http30,
       _ => throw ArgumentError.value(
-          input,
-          'input',
-          'Unsupported HTTP version string',
-        ),
+        input,
+        'input',
+        'Unsupported HTTP version string',
+      ),
     };
   }
 

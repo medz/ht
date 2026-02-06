@@ -12,37 +12,42 @@ void main() {
       );
 
       expect(request.method, 'POST');
-      expect(request.headers.get('content-type'),
-          'application/json; charset=utf-8');
+      expect(
+        request.headers.get('content-type'),
+        'application/json; charset=utf-8',
+      );
       expect(request.headers.get('content-length'), isNotNull);
     });
 
     test('search params request infers form encoding headers', () async {
-      final params = URLSearchParams();
-      params.append('a', '1');
-      params.append('b', '2');
+      final params = URLSearchParams()
+        ..append('a', '1')
+        ..append('b', '2');
 
       final request = Request.searchParams(
         Uri.parse('https://example.com'),
         body: params,
       );
 
-      expect(request.headers.get('content-type'),
-          'application/x-www-form-urlencoded; charset=utf-8');
+      expect(
+        request.headers.get('content-type'),
+        'application/x-www-form-urlencoded; charset=utf-8',
+      );
       expect(await request.text(), 'a=1&b=2');
     });
 
     test('form-data request infers multipart headers', () async {
-      final form = FormData();
-      form.append('name', 'alice');
+      final form = FormData()..append('name', 'alice');
 
       final request = Request.formData(
         Uri.parse('https://example.com'),
         body: form,
       );
 
-      expect(request.headers.get('content-type'),
-          startsWith('multipart/form-data; boundary='));
+      expect(
+        request.headers.get('content-type'),
+        startsWith('multipart/form-data; boundary='),
+      );
       expect(request.headers.get('content-length'), isNotNull);
       expect(await request.text(), contains('name="name"'));
     });
@@ -124,20 +129,14 @@ void main() {
     });
 
     test('copyWith without body fails after body has been consumed', () async {
-      final request = Request.text(
-        Uri.parse('https://example.com'),
-        body: 'x',
-      );
+      final request = Request.text(Uri.parse('https://example.com'), body: 'x');
       await request.text();
 
       expect(() => request.copyWith(method: 'PUT'), throwsStateError);
     });
 
     test('clone fails after body has been consumed', () async {
-      final request = Request.text(
-        Uri.parse('https://example.com'),
-        body: 'x',
-      );
+      final request = Request.text(Uri.parse('https://example.com'), body: 'x');
       await request.text();
 
       expect(() => request.clone(), throwsStateError);
@@ -169,8 +168,10 @@ void main() {
 
       expect(response.status, 200);
       expect(response.ok, isTrue);
-      expect(response.headers.get('content-type'),
-          'application/json; charset=utf-8');
+      expect(
+        response.headers.get('content-type'),
+        'application/json; charset=utf-8',
+      );
       expect(response.headers.get('content-length'), isNotNull);
     });
 
@@ -216,19 +217,21 @@ void main() {
       expect(await clone.text(), 'payload');
     });
 
-    test('copyWith clones body when omitted and supports body override',
-        () async {
-      final response = Response.text('payload', status: 200);
-      final copied = response.copyWith(status: 201);
-      final replaced = response.copyWith(body: 'other');
-      final emptied = response.copyWith(body: null);
+    test(
+      'copyWith clones body when omitted and supports body override',
+      () async {
+        final response = Response.text('payload', status: 200);
+        final copied = response.copyWith(status: 201);
+        final replaced = response.copyWith(body: 'other');
+        final emptied = response.copyWith(body: null);
 
-      expect(copied.status, 201);
-      expect(await response.text(), 'payload');
-      expect(await copied.text(), 'payload');
-      expect(await replaced.text(), 'other');
-      expect(await emptied.bytes(), isEmpty);
-    });
+        expect(copied.status, 201);
+        expect(await response.text(), 'payload');
+        expect(await copied.text(), 'payload');
+        expect(await replaced.text(), 'other');
+        expect(await emptied.bytes(), isEmpty);
+      },
+    );
 
     test('copyWith without body fails after body has been consumed', () async {
       final response = Response.text('x');

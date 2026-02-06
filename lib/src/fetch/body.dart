@@ -39,34 +39,32 @@ mixin BodyMixin {
 /// Internal body storage that supports cloning and one-time consumption.
 final class BodyData {
   BodyData.empty()
-      : _present = false,
-        _bytes = null,
-        _splitter = null,
-        _branch = null,
-        defaultContentType = null,
-        defaultContentLength = null;
+    : _present = false,
+      _bytes = null,
+      _splitter = null,
+      _branch = null,
+      defaultContentType = null,
+      defaultContentLength = null;
 
-  BodyData.bytes(
-    List<int> bytes, {
-    this.defaultContentType,
-  })  : _present = true,
-        _bytes = Uint8List.fromList(bytes),
-        _splitter = null,
-        _branch = null,
-        defaultContentLength = bytes.length;
+  BodyData.bytes(List<int> bytes, {this.defaultContentType})
+    : _present = true,
+      _bytes = Uint8List.fromList(bytes),
+      _splitter = null,
+      _branch = null,
+      defaultContentLength = bytes.length;
 
   BodyData.stream(
     Stream<List<int>> stream, {
     this.defaultContentType,
     this.defaultContentLength,
-  })  : _present = true,
-        _bytes = null,
-        _splitter = StreamSplitter<Uint8List>(
-          stream.map(
-            (chunk) => chunk is Uint8List ? chunk : Uint8List.fromList(chunk),
-          ),
-        ),
-        _branch = null {
+  }) : _present = true,
+       _bytes = null,
+       _splitter = StreamSplitter<Uint8List>(
+         stream.map(
+           (chunk) => chunk is Uint8List ? chunk : Uint8List.fromList(chunk),
+         ),
+       ),
+       _branch = null {
     _branch = _splitter!.split();
   }
 
@@ -75,10 +73,10 @@ final class BodyData {
     Stream<Uint8List> branch, {
     this.defaultContentType,
     this.defaultContentLength,
-  })  : _present = true,
-        _bytes = null,
-        _splitter = splitter,
-        _branch = branch;
+  }) : _present = true,
+       _bytes = null,
+       _splitter = splitter,
+       _branch = branch;
 
   factory BodyData.fromInit(Object? init) {
     if (init == null) {
@@ -204,10 +202,7 @@ final class BodyData {
     }
 
     if (_bytes != null) {
-      return BodyData.bytes(
-        _bytes,
-        defaultContentType: defaultContentType,
-      );
+      return BodyData.bytes(_bytes, defaultContentType: defaultContentType);
     }
 
     final splitter = _splitter;

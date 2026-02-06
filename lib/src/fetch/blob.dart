@@ -3,22 +3,20 @@ import 'dart:typed_data';
 
 /// Binary large object.
 class Blob {
-  Blob([
-    Iterable<Object> parts = const <Object>[],
-    String type = '',
-  ])  : _bytes = _concatenate(parts),
-        type = _normalizeType(type);
+  Blob([Iterable<Object> parts = const <Object>[], String type = ''])
+    : _bytes = _concatenate(parts),
+      type = _normalizeType(type);
 
   Blob.bytes(List<int> bytes, {String type = ''})
-      : _bytes = Uint8List.fromList(bytes),
-        type = _normalizeType(type);
+    : _bytes = Uint8List.fromList(bytes),
+      type = _normalizeType(type);
 
   Blob.text(
     String text, {
     String type = 'text/plain;charset=utf-8',
     Encoding encoding = utf8,
-  })  : _bytes = Uint8List.fromList(encoding.encode(text)),
-        type = _normalizeType(type);
+  }) : _bytes = Uint8List.fromList(encoding.encode(text)),
+       type = _normalizeType(type);
 
   final Uint8List _bytes;
 

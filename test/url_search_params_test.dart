@@ -12,10 +12,10 @@ void main() {
     });
 
     test('set and delete mutate entries', () {
-      final params = URLSearchParams();
-      params.append('a', '1');
-      params.append('a', '2');
-      params.set('a', '3');
+      final params = URLSearchParams()
+        ..append('a', '1')
+        ..append('a', '2')
+        ..set('a', '3');
 
       expect(params.getAll('a'), ['3']);
 
@@ -24,8 +24,7 @@ void main() {
     });
 
     test('sort orders by key', () {
-      final params = URLSearchParams('z=1&a=2');
-      params.sort();
+      final params = URLSearchParams('z=1&a=2')..sort();
       expect(params.toString(), 'a=2&z=1');
     });
 
@@ -33,12 +32,10 @@ void main() {
       final byMap = URLSearchParams({'a': '1', 'b': '2'});
       expect(byMap.toString(), 'a=1&b=2');
 
-      final byEntries = URLSearchParams(
-        <MapEntry<String, String>>[
-          const MapEntry<String, String>('x', '1'),
-          const MapEntry<String, String>('x', '2'),
-        ],
-      );
+      final byEntries = URLSearchParams(<MapEntry<String, String>>[
+        const MapEntry<String, String>('x', '1'),
+        const MapEntry<String, String>('x', '2'),
+      ]);
       expect(byEntries.getAll('x'), ['1', '2']);
     });
 
@@ -53,8 +50,7 @@ void main() {
 
     test('clone is independent', () {
       final params = URLSearchParams('a=1');
-      final clone = params.clone();
-      clone.set('a', '2');
+      final clone = params.clone()..set('a', '2');
 
       expect(params.get('a'), '1');
       expect(clone.get('a'), '2');

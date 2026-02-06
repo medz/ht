@@ -14,7 +14,8 @@ class URLSearchParams extends IterableBase<MapEntry<String, String>> {
 
     if (init is URLSearchParams) {
       _entries.addAll(
-          init._entries.map((entry) => MapEntry(entry.key, entry.value)));
+        init._entries.map((entry) => MapEntry(entry.key, entry.value)),
+      );
       return;
     }
 
@@ -39,7 +40,7 @@ class URLSearchParams extends IterableBase<MapEntry<String, String>> {
     );
   }
 
-  final List<MapEntry<String, String>> _entries = <MapEntry<String, String>>[];
+  final _entries = <MapEntry<String, String>>[];
 
   void append(String name, String value) {
     _entries.add(MapEntry<String, String>(name, value));

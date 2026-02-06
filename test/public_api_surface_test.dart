@@ -23,7 +23,7 @@ void main() {
 
     final response = Response.bytes(<int>[1, 2, 3], status: status);
 
-    BodyInit init = 'x';
+    final BodyInit init = 'x';
 
     expect(method.toString(), 'POST');
     expect(version.value, 'HTTP/1.1');

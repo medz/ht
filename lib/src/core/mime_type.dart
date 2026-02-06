@@ -26,9 +26,9 @@ final class MimeType {
     String type,
     String subtype, [
     Map<String, String> parameters = const {},
-  ])  : type = type.toLowerCase(),
-        subtype = subtype.toLowerCase(),
-        parameters = UnmodifiableMapView(Map<String, String>.from(parameters));
+  ]) : type = type.toLowerCase(),
+       subtype = subtype.toLowerCase(),
+       parameters = UnmodifiableMapView(Map<String, String>.from(parameters));
 
   factory MimeType.parse(String input) {
     try {
@@ -44,7 +44,9 @@ final class MimeType {
     final found = _resolver.lookup('file$normalized');
     if (found == null) {
       throw MimeTypeFormatException(
-          'Unknown file extension: $extension', extension);
+        'Unknown file extension: $extension',
+        extension,
+      );
     }
 
     return MimeType.parse(found);
@@ -69,8 +71,10 @@ final class MimeType {
   static final MimeType json = MimeType('application', 'json');
   static final MimeType xml = MimeType('application', 'xml');
   static final MimeType octetStream = MimeType('application', 'octet-stream');
-  static final MimeType formUrlEncoded =
-      MimeType('application', 'x-www-form-urlencoded');
+  static final MimeType formUrlEncoded = MimeType(
+    'application',
+    'x-www-form-urlencoded',
+  );
   static final MimeType formData = MimeType('multipart', 'form-data');
 
   final String type;

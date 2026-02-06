@@ -13,10 +13,10 @@ class Response with BodyMixin {
     Headers? headers,
     this.url,
     this.redirected = false,
-  })  : status = _validateStatus(status),
-        statusText = statusText ?? HttpStatus.reasonPhrase(status),
-        headers = headers?.clone() ?? Headers(),
-        bodyData = BodyData.fromInit(body) {
+  }) : status = _validateStatus(status),
+       statusText = statusText ?? HttpStatus.reasonPhrase(status),
+       headers = headers?.clone() ?? Headers(),
+       bodyData = BodyData.fromInit(body) {
     _applyDefaultBodyHeaders();
   }
 
@@ -101,8 +101,8 @@ class Response with BodyMixin {
       );
     }
 
-    final nextHeaders = headers?.clone() ?? Headers();
-    nextHeaders.set('location', location.toString());
+    final nextHeaders = (headers?.clone() ?? Headers())
+      ..set('location', location.toString());
 
     return Response(
       status: status,

@@ -8,8 +8,7 @@ enum HttpMethod {
   delete('DELETE'),
   options('OPTIONS'),
   connect('CONNECT'),
-  trace('TRACE', allowsRequestBody: false),
-  ;
+  trace('TRACE', allowsRequestBody: false);
 
   const HttpMethod(this.value, {this.allowsRequestBody = true});
 

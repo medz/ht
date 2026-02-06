@@ -42,9 +42,16 @@ void main() {
       final byExtension = MimeType.fromExtension('json');
       expect(byExtension.essence, 'application/json');
 
-      final byBytes = MimeType.fromBytes(
-        <int>[137, 80, 78, 71, 13, 10, 26, 10],
-      );
+      final byBytes = MimeType.fromBytes(<int>[
+        137,
+        80,
+        78,
+        71,
+        13,
+        10,
+        26,
+        10,
+      ]);
       expect(byBytes.essence, 'image/png');
     });
 

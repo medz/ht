@@ -24,9 +24,9 @@ class Headers extends IterableBase<MapEntry<String, String>> {
     return headers;
   }
 
-  static final RegExp _tokenPattern = RegExp(r"^[!#$%&'*+\-.^_`|~0-9A-Za-z]+$");
+  static final _tokenPattern = RegExp(r"^[!#$%&'*+\-.^_`|~0-9A-Za-z]+$");
 
-  final List<_HeaderEntry> _entries = <_HeaderEntry>[];
+  final _entries = <_HeaderEntry>[];
 
   /// Adds a header value.
   void append(String name, Object value) {
@@ -117,8 +117,9 @@ class Headers extends IterableBase<MapEntry<String, String>> {
 
   @override
   Iterator<MapEntry<String, String>> get iterator => _entries
-      .map((entry) =>
-          MapEntry<String, String>(entry.normalizedName, entry.value))
+      .map(
+        (entry) => MapEntry<String, String>(entry.normalizedName, entry.value),
+      )
       .iterator;
 
   static String _normalizeAndValidateName(String name) {
@@ -133,7 +134,10 @@ class Headers extends IterableBase<MapEntry<String, String>> {
     final normalized = value.toString().trim();
     if (normalized.contains('\r') || normalized.contains('\n')) {
       throw ArgumentError.value(
-          value, 'value', 'Header value must not contain CR/LF');
+        value,
+        'value',
+        'Header value must not contain CR/LF',
+      );
     }
     return normalized;
   }
@@ -151,8 +155,8 @@ final class _HeaderEntry {
   final String value;
 
   _HeaderEntry copy() => _HeaderEntry(
-        originalName: originalName,
-        normalizedName: normalizedName,
-        value: value,
-      );
+    originalName: originalName,
+    normalizedName: normalizedName,
+    value: value,
+  );
 }

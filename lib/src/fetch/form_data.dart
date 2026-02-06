@@ -19,7 +19,7 @@ final class MultipartBody {
 
 /// Form-data collection compatible with fetch-style APIs.
 class FormData extends IterableBase<MapEntry<String, Object>> {
-  final List<MapEntry<String, Object>> _entries = <MapEntry<String, Object>>[];
+  final _entries = <MapEntry<String, Object>>[];
 
   void append(String name, Object value, {String? filename}) {
     _entries.add(MapEntry(name, _normalizeValue(value, filename: filename)));
@@ -78,21 +78,23 @@ class FormData extends IterableBase<MapEntry<String, Object>> {
         );
 
         final type = file.type.isEmpty ? 'application/octet-stream' : file.type;
-        builder.add(_utf8('Content-Type: $type\r\n\r\n'));
-        builder.add(file.copyBytes());
-        builder.add(_utf8('\r\n'));
+        builder
+          ..add(_utf8('Content-Type: $type\r\n\r\n'))
+          ..add(file.copyBytes())
+          ..add(_utf8('\r\n'));
         continue;
       }
 
       final value = entry.value as String;
-      builder.add(
-        _utf8(
-          'Content-Disposition: form-data; '
-          'name="${_escapeHeaderValue(entry.key)}"\r\n\r\n',
-        ),
-      );
-      builder.add(_utf8(value));
-      builder.add(_utf8('\r\n'));
+      builder
+        ..add(
+          _utf8(
+            'Content-Disposition: form-data; '
+            'name="${_escapeHeaderValue(entry.key)}"\r\n\r\n',
+          ),
+        )
+        ..add(_utf8(value))
+        ..add(_utf8('\r\n'));
     }
 
     builder.add(_utf8('--$safeBoundary--\r\n'));
