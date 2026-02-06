@@ -6,11 +6,13 @@ void main() {
     test('prints wire values', () {
       expect(HttpVersion.http11.value, 'HTTP/1.1');
       expect(HttpVersion.http20.value, 'HTTP/2.0');
+      expect(HttpVersion.http11.toString(), 'HTTP/1.1');
     });
 
-    test('parses standard values', () {
+    test('parses standard values and shorthand aliases', () {
       expect(HttpVersion.parse('HTTP/1.1'), HttpVersion.http11);
       expect(HttpVersion.parse('http/2.0'), HttpVersion.http20);
+      expect(HttpVersion.parse('h2'), HttpVersion.http20);
       expect(HttpVersion.parse('h3'), HttpVersion.http30);
     });
 

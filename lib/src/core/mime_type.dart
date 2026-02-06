@@ -122,6 +122,11 @@ final class MimeType {
   }
 
   @override
-  int get hashCode =>
-      Object.hash(type, subtype, Object.hashAll(parameters.entries));
+  int get hashCode {
+    final parameterHashes = parameters.entries.map(
+      (entry) => Object.hash(entry.key, entry.value),
+    );
+
+    return Object.hash(type, subtype, Object.hashAllUnordered(parameterHashes));
+  }
 }

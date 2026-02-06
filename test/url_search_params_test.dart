@@ -28,5 +28,48 @@ void main() {
       params.sort();
       expect(params.toString(), 'a=2&z=1');
     });
+
+    test('supports map and entry-list construction', () {
+      final byMap = URLSearchParams({'a': '1', 'b': '2'});
+      expect(byMap.toString(), 'a=1&b=2');
+
+      final byEntries = URLSearchParams(
+        <MapEntry<String, String>>[
+          const MapEntry<String, String>('x', '1'),
+          const MapEntry<String, String>('x', '2'),
+        ],
+      );
+      expect(byEntries.getAll('x'), ['1', '2']);
+    });
+
+    test('supports selective delete and has(name, value)', () {
+      final params = URLSearchParams('a=1&a=2&a=3');
+      expect(params.has('a', '2'), isTrue);
+
+      params.delete('a', '2');
+      expect(params.getAll('a'), ['1', '3']);
+      expect(params.has('a', '2'), isFalse);
+    });
+
+    test('clone is independent', () {
+      final params = URLSearchParams('a=1');
+      final clone = params.clone();
+      clone.set('a', '2');
+
+      expect(params.get('a'), '1');
+      expect(clone.get('a'), '2');
+    });
+
+    test('handles key without equal-sign', () {
+      final params = URLSearchParams('a&b=1&&c=');
+      expect(params.get('a'), '');
+      expect(params.get('b'), '1');
+      expect(params.get('c'), '');
+      expect(params.toString(), 'a=&b=1&c=');
+    });
+
+    test('rejects unsupported initializer', () {
+      expect(() => URLSearchParams(42), throwsArgumentError);
+    });
   });
 }

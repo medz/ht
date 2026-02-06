@@ -9,6 +9,33 @@ void main() {
       expect(mime.subtype, 'json');
       expect(mime.parameters['charset'], 'utf-8');
       expect(mime.essence, 'application/json');
+      expect(mime.toString(), 'application/json; charset=utf-8');
+    });
+
+    test('normalizes constructor values and keeps parameters unmodifiable', () {
+      final mime = MimeType('Text', 'Plain', {'Charset': 'utf-8'});
+      expect(mime.type, 'text');
+      expect(mime.subtype, 'plain');
+      expect(() => mime.parameters['x'] = '1', throwsUnsupportedError);
+    });
+
+    test('supports withParameter immutable updates', () {
+      final original = MimeType.json;
+      final next = original.withParameter('charset', 'utf-8');
+
+      expect(original.parameters.containsKey('charset'), isFalse);
+      expect(next.parameters['charset'], 'utf-8');
+      expect(next.toString(), 'application/json; charset=utf-8');
+    });
+
+    test('uses value equality and stable hashCode', () {
+      final a = MimeType.parse('application/json; charset=utf-8');
+      final b = MimeType('application', 'json', {'charset': 'utf-8'});
+      final c = MimeType('application', 'json');
+
+      expect(a, b);
+      expect(a.hashCode, b.hashCode);
+      expect(a == c, isFalse);
     });
 
     test('resolves extension and sniffs bytes', () {
@@ -25,6 +52,10 @@ void main() {
       expect(() => MimeType.parse('invalid'), throwsA(isA<FormatException>()));
       expect(
         () => MimeType.fromExtension('unknown-ext-foo'),
+        throwsA(isA<FormatException>()),
+      );
+      expect(
+        () => MimeType.fromBytes(<int>[1, 2, 3, 4]),
         throwsA(isA<FormatException>()),
       );
     });
