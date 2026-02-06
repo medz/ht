@@ -3,7 +3,6 @@
 `ht` means **HTTP Types**. It provides shared, framework-agnostic, fetch-first HTTP abstractions:
 
 - Fetch primitives (`Request`, `Response`, `Headers`, `URLSearchParams`, `Blob`, `File`, `FormData`)
-- Fetch middleware composition (`FetchHandler`, `FetchMiddleware`, `composeFetchMiddleware`)
 - Common protocol types (`HttpMethod`, `HttpStatus`, `HttpVersion`, `MimeType`)
 
 ## Example
@@ -26,23 +25,6 @@ void main() async {
   print(request.headers.get('content-type'));
   print(await response.text());
 }
-```
-
-## Middleware Example
-
-```dart
-import 'package:ht/ht.dart';
-
-final app = composeFetchMiddleware(
-  (request) => Response.text('ok'),
-  [
-    (request, next) async {
-      final response = await next(request);
-      response.headers.set('x-powered-by', 'ht');
-      return response;
-    },
-  ],
-);
 ```
 
 ## Notes
