@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:block/block.dart' as block;
 import 'package:ht/ht.dart';
 import 'package:test/test.dart';
 
@@ -50,6 +51,19 @@ void main() {
       );
       expect(request.headers.get('content-length'), isNotNull);
       expect(await request.text(), contains('name="name"'));
+    });
+
+    test('accepts block body and infers content headers', () async {
+      final body = block.Block(<Object>['hello'], type: 'text/custom');
+      final request = Request(
+        Uri.parse('https://example.com'),
+        method: 'POST',
+        body: body,
+      );
+
+      expect(request.headers.get('content-type'), 'text/custom');
+      expect(request.headers.get('content-length'), '5');
+      expect(await request.text(), 'hello');
     });
 
     test('cannot attach body to GET/HEAD/TRACE', () {
@@ -173,6 +187,15 @@ void main() {
         'application/json; charset=utf-8',
       );
       expect(response.headers.get('content-length'), isNotNull);
+    });
+
+    test('accepts block body and infers content headers', () async {
+      final body = block.Block(<Object>['payload'], type: 'application/custom');
+      final response = Response(body: body);
+
+      expect(response.headers.get('content-type'), 'application/custom');
+      expect(response.headers.get('content-length'), '7');
+      expect(await response.text(), 'payload');
     });
 
     test('empty response defaults to 204 and no body', () async {

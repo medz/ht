@@ -1,3 +1,4 @@
+import 'package:block/block.dart' as block;
 import 'package:ht/ht.dart';
 import 'package:test/test.dart';
 
@@ -13,6 +14,8 @@ void main() {
     final blob = Blob.text('hello');
     final file = File(<Object>[blob], 'hello.txt', type: 'text/plain');
     final form = FormData()..append('file', file);
+    final multipart = form.encodeMultipart(boundary: 'api');
+    final blockBody = block.Block(<Object>['block-body'], type: 'text/plain');
 
     final request = Request.formData(
       Uri.parse('https://example.com/upload'),
@@ -21,7 +24,7 @@ void main() {
       body: form,
     );
 
-    final response = Response.bytes(<int>[1, 2, 3], status: status);
+    final response = Response(body: blockBody, status: status);
 
     final BodyInit init = 'x';
 
@@ -32,6 +35,8 @@ void main() {
     expect(await blob.text(), 'hello');
     expect(file.name, 'hello.txt');
     expect(request.headers.has('content-type'), isTrue);
+    expect(await multipart.bytes(), isNotEmpty);
+    expect(await response.text(), 'block-body');
     expect(response.ok, isTrue);
     expect(init, 'x');
   });

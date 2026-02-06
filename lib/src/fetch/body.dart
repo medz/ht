@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:async/async.dart';
+import 'package:block/block.dart' as block;
 
 import 'blob.dart';
 import 'form_data.dart';
@@ -107,9 +108,18 @@ final class BodyData {
     }
 
     if (init is Blob) {
-      return BodyData.bytes(
-        init.copyBytes(),
+      return BodyData.stream(
+        init.stream(),
         defaultContentType: init.type.isEmpty ? null : init.type,
+        defaultContentLength: init.size,
+      );
+    }
+
+    if (init is block.Block) {
+      return BodyData.stream(
+        init.stream(),
+        defaultContentType: init.type.isEmpty ? null : init.type,
+        defaultContentLength: init.size,
       );
     }
 
@@ -122,9 +132,10 @@ final class BodyData {
 
     if (init is FormData) {
       final payload = init.encodeMultipart();
-      return BodyData.bytes(
-        payload.bytes,
+      return BodyData.stream(
+        payload.stream,
         defaultContentType: payload.contentType,
+        defaultContentLength: payload.contentLength,
       );
     }
 

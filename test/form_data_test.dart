@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
+import 'package:block/block.dart' as block;
 import 'package:ht/ht.dart';
 import 'package:test/test.dart';
 
@@ -13,6 +14,9 @@ void main() {
 
       final slice = blob.slice(6);
       expect(await slice.text(), 'world');
+
+      final tailSlice = blob.slice(-5);
+      expect(await tailSlice.text(), 'world');
     });
 
     test('concatenates mixed part types', () async {
@@ -41,14 +45,18 @@ void main() {
         () => Blob.text('x', type: 'text/plain\nfoo'),
         throwsArgumentError,
       );
-      await expectLater(
-        Blob.text('x').stream(chunkSize: 0).toList(),
-        throwsArgumentError,
-      );
+      expect(() => Blob.text('x').stream(chunkSize: 0), throwsArgumentError);
     });
 
     test('rejects unsupported part types', () {
       expect(() => Blob(<Object>[DateTime(2024)]), throwsArgumentError);
+    });
+
+    test('is compatible with block.Block interface', () async {
+      final blob = Blob.text('hello');
+      final block.Block blockView = blob;
+      expect(await blockView.text(), 'hello');
+      expect(await blockView.slice(-2).text(), 'lo');
     });
   });
 
@@ -62,7 +70,7 @@ void main() {
   });
 
   group('FormData', () {
-    test('normalizes values and encodes multipart', () {
+    test('normalizes values and encodes multipart', () async {
       final form = FormData()
         ..append('name', 'alice')
         ..append('avatar', Blob.text('binary'), filename: 'a.txt');
@@ -71,13 +79,14 @@ void main() {
       expect(avatar, isA<File>());
 
       final encoded = form.encodeMultipart(boundary: 'test-boundary');
-      final bodyText = utf8.decode(encoded.bytes);
+      final bodyBytes = await encoded.bytes();
+      final bodyText = utf8.decode(bodyBytes);
 
       expect(
         encoded.contentType,
         'multipart/form-data; boundary=test-boundary',
       );
-      expect(encoded.contentLength, encoded.bytes.length);
+      expect(encoded.contentLength, bodyBytes.length);
       expect(bodyText, contains('name="name"'));
       expect(bodyText, contains('name="avatar"; filename="a.txt"'));
       expect(bodyText, contains('alice'));
@@ -123,15 +132,33 @@ void main() {
       expect(clone.get('a'), '2');
     });
 
-    test('escapes multipart header values', () {
+    test('escapes multipart header values', () async {
       final form = FormData()
         ..append('na"me', Blob.text('x'), filename: 'fi\r\nle.txt');
 
       final encoded = form.encodeMultipart(boundary: 'b');
-      final text = utf8.decode(encoded.bytes);
+      final text = utf8.decode(await encoded.bytes());
 
       expect(text, contains('name="na\\"me"'));
       expect(text, contains('filename="fi\\r\\nle.txt"'));
     });
+
+    test(
+      'multipart stream and bytes helper produce identical payload',
+      () async {
+        final form = FormData()
+          ..append('a', '1')
+          ..append('b', Blob.text('2'), filename: 'b.txt');
+
+        final encoded = form.encodeMultipart(boundary: 'z');
+        final fromBytes = await encoded.bytes();
+        final fromStream = BytesBuilder(copy: false);
+        await for (final chunk in encoded.stream) {
+          fromStream.add(chunk);
+        }
+
+        expect(fromStream.takeBytes(), fromBytes);
+      },
+    );
   });
 }
