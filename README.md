@@ -1,6 +1,7 @@
 # ht
 
 [![CI](https://github.com/medz/ht/actions/workflows/ci.yml/badge.svg)](https://github.com/medz/ht/actions/workflows/ci.yml)
+[![pub package](https://img.shields.io/pub/v/ht?label=pub.dev)](https://pub.dev/packages/ht)
 [![Dart SDK](https://img.shields.io/badge/Dart_SDK-%5E3.10.0-0175C2?logo=dart)](https://dart.dev/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](./LICENSE)
 
