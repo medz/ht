@@ -13,7 +13,7 @@ void main() {
 
     final headers = Headers({'content-type': mime.toString()});
     final params = URLSearchParams('a=1');
-    final blob = Blob.text('hello');
+    final blob = Blob(<Object>['hello'], 'text/plain;charset=utf-8');
     final file = File(<Object>[blob], 'hello.txt', type: 'text/plain');
     final form = FormData()..append('file', file);
     final multipart = form.encodeMultipart(boundary: 'api');
