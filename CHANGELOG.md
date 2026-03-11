@@ -1,3 +1,10 @@
+## Next
+
+- BREAKING: Aligned `Request` and `Response` constructor/factory parameter
+  semantics with Fetch/Web by introducing `RequestInit` and `ResponseInit`.
+- BREAKING: Reworked request/response convenience constructors to use
+  web-aligned positional body/init argument order.
+
 ## 0.2.0
 
 - BREAKING: Reworked `Blob` to a `block`-backed implementation and removed

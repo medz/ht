@@ -4,18 +4,39 @@ import '../core/http_status.dart';
 import 'body.dart';
 import 'headers.dart';
 
+/// Initialization options for [Response], aligned with Fetch `ResponseInit`.
+final class ResponseInit {
+  ResponseInit({this.status, this.statusText, Headers? headers})
+    : headers = headers?.clone();
+
+  final int? status;
+  final String? statusText;
+  final Headers? headers;
+
+  ResponseInit copyWith({int? status, String? statusText, Headers? headers}) {
+    return ResponseInit(
+      status: status ?? this.status,
+      statusText: statusText ?? this.statusText,
+      headers: headers ?? this.headers?.clone(),
+    );
+  }
+}
+
 /// Fetch-like HTTP response model.
 class Response with BodyMixin {
-  Response({
+  Response([Object? body, ResponseInit? init])
+    : this._create(body, init, url: null, redirected: false);
+
+  Response._create(
     Object? body,
-    int status = HttpStatus.ok,
-    String? statusText,
-    Headers? headers,
-    this.url,
-    this.redirected = false,
-  }) : status = _validateStatus(status),
-       statusText = statusText ?? HttpStatus.reasonPhrase(status),
-       headers = headers?.clone() ?? Headers(),
+    ResponseInit? init, {
+    required this.url,
+    required this.redirected,
+  }) : status = _validateStatus(init?.status ?? HttpStatus.ok),
+       statusText =
+           init?.statusText ??
+           HttpStatus.reasonPhrase(init?.status ?? HttpStatus.ok),
+       headers = init?.headers?.clone() ?? Headers(),
        bodyData = BodyData.fromInit(body) {
     _applyDefaultBodyHeaders();
   }
@@ -29,70 +50,27 @@ class Response with BodyMixin {
     required this.redirected,
   });
 
-  factory Response.text(
-    String body, {
-    int status = HttpStatus.ok,
-    String? statusText,
-    Headers? headers,
-    Uri? url,
-    bool redirected = false,
-  }) {
-    return Response(
-      body: body,
-      status: status,
-      statusText: statusText,
-      headers: headers,
-      url: url,
-      redirected: redirected,
-    );
+  factory Response.text(String body, [ResponseInit? init]) {
+    return Response(body, init);
   }
 
-  factory Response.json(
-    Object? body, {
-    int status = HttpStatus.ok,
-    String? statusText,
-    Headers? headers,
-    Uri? url,
-    bool redirected = false,
-  }) {
-    final nextHeaders = headers?.clone() ?? Headers();
+  factory Response.json(Object? body, [ResponseInit? init]) {
+    final nextHeaders = init?.headers?.clone() ?? Headers();
     if (!nextHeaders.has('content-type')) {
       nextHeaders.set('content-type', 'application/json; charset=utf-8');
     }
 
     return Response(
-      body: json.encode(body),
-      status: status,
-      statusText: statusText,
-      headers: nextHeaders,
-      url: url,
-      redirected: redirected,
+      json.encode(body),
+      (init ?? ResponseInit()).copyWith(headers: nextHeaders),
     );
   }
 
-  factory Response.bytes(
-    List<int> body, {
-    int status = HttpStatus.ok,
-    String? statusText,
-    Headers? headers,
-    Uri? url,
-    bool redirected = false,
-  }) {
-    return Response(
-      body: body,
-      status: status,
-      statusText: statusText,
-      headers: headers,
-      url: url,
-      redirected: redirected,
-    );
+  factory Response.bytes(List<int> body, [ResponseInit? init]) {
+    return Response(body, init);
   }
 
-  factory Response.redirect(
-    Uri location, {
-    int status = HttpStatus.found,
-    Headers? headers,
-  }) {
+  factory Response.redirect(Uri location, [int status = HttpStatus.found]) {
     if (!const <int>{301, 302, 303, 307, 308}.contains(status)) {
       throw ArgumentError.value(
         status,
@@ -101,30 +79,24 @@ class Response with BodyMixin {
       );
     }
 
-    final nextHeaders = (headers?.clone() ?? Headers())
-      ..set('location', location.toString());
+    final nextHeaders = Headers()..set('location', location.toString());
 
-    return Response(
-      status: status,
-      headers: nextHeaders,
+    return Response._create(
+      null,
+      ResponseInit(status: status, headers: nextHeaders),
       url: location,
       redirected: true,
     );
   }
 
-  factory Response.empty({
-    int status = HttpStatus.noContent,
-    String? statusText,
-    Headers? headers,
-    Uri? url,
-    bool redirected = false,
-  }) {
+  factory Response.empty([ResponseInit? init]) {
     return Response(
-      status: status,
-      statusText: statusText,
-      headers: headers,
-      url: url,
-      redirected: redirected,
+      null,
+      ResponseInit(
+        status: init?.status ?? HttpStatus.noContent,
+        statusText: init?.statusText,
+        headers: init?.headers,
+      ),
     );
   }
 
@@ -163,11 +135,13 @@ class Response with BodyMixin {
   }) {
     final hasBody = !identical(body, _sentinel);
 
-    return Response(
-      body: hasBody ? body : bodyData.clone(),
-      status: status ?? this.status,
-      statusText: statusText ?? this.statusText,
-      headers: headers ?? this.headers.clone(),
+    return Response._create(
+      hasBody ? body : bodyData.clone(),
+      ResponseInit(
+        status: status ?? this.status,
+        statusText: statusText ?? this.statusText,
+        headers: headers ?? this.headers.clone(),
+      ),
       url: url ?? this.url,
       redirected: redirected ?? this.redirected,
     );

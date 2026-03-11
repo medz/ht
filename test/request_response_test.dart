@@ -7,10 +7,7 @@ import 'package:test/test.dart';
 void main() {
   group('Request', () {
     test('json request infers headers', () {
-      final request = Request.json(
-        Uri.parse('https://example.com'),
-        body: {'x': 1},
-      );
+      final request = Request.json(Uri.parse('https://example.com'), {'x': 1});
 
       expect(request.method, 'POST');
       expect(
@@ -27,7 +24,7 @@ void main() {
 
       final request = Request.searchParams(
         Uri.parse('https://example.com'),
-        body: params,
+        params,
       );
 
       expect(
@@ -40,10 +37,7 @@ void main() {
     test('form-data request infers multipart headers', () async {
       final form = FormData()..append('name', 'alice');
 
-      final request = Request.formData(
-        Uri.parse('https://example.com'),
-        body: form,
-      );
+      final request = Request.formData(Uri.parse('https://example.com'), form);
 
       expect(
         request.headers.get('content-type'),
@@ -57,8 +51,7 @@ void main() {
       final body = block.Block(<Object>['hello'], type: 'text/custom');
       final request = Request(
         Uri.parse('https://example.com'),
-        method: 'POST',
-        body: body,
+        RequestInit(method: 'POST', body: body),
       );
 
       expect(request.headers.get('content-type'), 'text/custom');
@@ -68,8 +61,10 @@ void main() {
 
     test('cannot attach body to GET/HEAD/TRACE', () {
       expect(
-        () =>
-            Request(Uri.parse('https://example.com'), method: 'GET', body: 'x'),
+        () => Request(
+          Uri.parse('https://example.com'),
+          RequestInit(method: 'GET', body: 'x'),
+        ),
         throwsArgumentError,
       );
     });
@@ -77,7 +72,7 @@ void main() {
     test('clone duplicates unread stream body', () async {
       final request = Request.stream(
         Uri.parse('https://example.com'),
-        body: Stream<List<int>>.fromIterable(<List<int>>[
+        Stream<List<int>>.fromIterable(<List<int>>[
           utf8.encode('hello '),
           utf8.encode('world'),
         ]),
@@ -91,7 +86,7 @@ void main() {
     test('body stream marks bodyUsed and is single-consume', () async {
       final request = Request.text(
         Uri.parse('https://example.com'),
-        body: 'streamed',
+        'streamed',
       );
 
       expect(request.bodyUsed, isFalse);
@@ -102,10 +97,7 @@ void main() {
     });
 
     test('body can only be consumed once', () async {
-      final request = Request.text(
-        Uri.parse('https://example.com'),
-        body: 'once',
-      );
+      final request = Request.text(Uri.parse('https://example.com'), 'once');
 
       expect(await request.text(), 'once');
       await expectLater(request.text(), throwsStateError);
@@ -115,8 +107,7 @@ void main() {
       final source = Headers({'x-id': '1'});
       final request = Request(
         Uri.parse('https://example.com'),
-        method: 'POST',
-        headers: source,
+        RequestInit(method: 'POST', headers: source),
       );
 
       source.set('x-id', '2');
@@ -127,10 +118,7 @@ void main() {
     });
 
     test('copyWith clones body when omitted and can replace body', () async {
-      final request = Request.text(
-        Uri.parse('https://example.com'),
-        body: 'payload',
-      );
+      final request = Request.text(Uri.parse('https://example.com'), 'payload');
 
       final copied = request.copyWith(method: 'PUT');
       final replaced = request.copyWith(method: 'PATCH', body: 'next');
@@ -143,14 +131,14 @@ void main() {
     });
 
     test('copyWith without body fails after body has been consumed', () async {
-      final request = Request.text(Uri.parse('https://example.com'), body: 'x');
+      final request = Request.text(Uri.parse('https://example.com'), 'x');
       await request.text();
 
       expect(() => request.copyWith(method: 'PUT'), throwsStateError);
     });
 
     test('clone fails after body has been consumed', () async {
-      final request = Request.text(Uri.parse('https://example.com'), body: 'x');
+      final request = Request.text(Uri.parse('https://example.com'), 'x');
       await request.text();
 
       expect(() => request.clone(), throwsStateError);
@@ -168,8 +156,7 @@ void main() {
       expect(
         () => Request(
           Uri.parse('https://example.com'),
-          method: 'POST',
-          body: DateTime(2024),
+          RequestInit(method: 'POST', body: DateTime(2024)),
         ),
         throwsArgumentError,
       );
@@ -191,7 +178,7 @@ void main() {
 
     test('accepts block body and infers content headers', () async {
       final body = block.Block(<Object>['payload'], type: 'application/custom');
-      final response = Response(body: body);
+      final response = Response(body);
 
       expect(response.headers.get('content-type'), 'application/custom');
       expect(response.headers.get('content-length'), '7');
@@ -216,14 +203,14 @@ void main() {
 
     test('redirect factory rejects non-redirect status', () {
       expect(
-        () => Response.redirect(Uri.parse('https://example.com'), status: 200),
+        () => Response.redirect(Uri.parse('https://example.com'), 200),
         throwsArgumentError,
       );
     });
 
     test('constructor clones headers input', () {
       final source = Headers({'x-id': '1'});
-      final response = Response.text('ok', headers: source);
+      final response = Response.text('ok', ResponseInit(headers: source));
 
       source.set('x-id', '2');
       response.headers.set('x-other', 'v');
@@ -243,7 +230,7 @@ void main() {
     test(
       'copyWith clones body when omitted and supports body override',
       () async {
-        final response = Response.text('payload', status: 200);
+        final response = Response.text('payload', ResponseInit(status: 200));
         final copied = response.copyWith(status: 201);
         final replaced = response.copyWith(body: 'other');
         final emptied = response.copyWith(body: null);
@@ -265,8 +252,8 @@ void main() {
 
     test('blob type prefers explicit content-type header', () async {
       final response = Response(
-        body: 'hello',
-        headers: Headers({'content-type': 'application/custom'}),
+        'hello',
+        ResponseInit(headers: Headers({'content-type': 'application/custom'})),
       );
 
       final blob = await response.blob();
@@ -275,8 +262,14 @@ void main() {
     });
 
     test('validates status range', () {
-      expect(() => Response(status: 99), throwsArgumentError);
-      expect(() => Response(status: 600), throwsArgumentError);
+      expect(
+        () => Response(null, ResponseInit(status: 99)),
+        throwsArgumentError,
+      );
+      expect(
+        () => Response(null, ResponseInit(status: 600)),
+        throwsArgumentError,
+      );
     });
   });
 }

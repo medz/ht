@@ -5,12 +5,37 @@ import 'form_data.dart';
 import 'headers.dart';
 import 'url_search_params.dart';
 
+/// Initialization options for [Request], aligned with Fetch `RequestInit`.
+final class RequestInit {
+  RequestInit({this.method, Headers? headers, this.body})
+    : headers = headers?.clone();
+
+  final String? method;
+  final Headers? headers;
+  final Object? body;
+
+  RequestInit copyWith({
+    String? method,
+    Headers? headers,
+    Object? body = _sentinel,
+  }) {
+    final hasBody = !identical(body, _sentinel);
+    return RequestInit(
+      method: method ?? this.method,
+      headers: headers ?? this.headers?.clone(),
+      body: hasBody ? body : this.body,
+    );
+  }
+
+  static const Object _sentinel = Object();
+}
+
 /// Fetch-like HTTP request model.
 class Request with BodyMixin {
-  Request(this.url, {String method = 'GET', Headers? headers, Object? body})
-    : method = _normalizeMethod(method),
-      headers = headers?.clone() ?? Headers(),
-      bodyData = BodyData.fromInit(body) {
+  Request(this.url, [RequestInit? init])
+    : method = _normalizeMethod(init?.method ?? 'GET'),
+      headers = init?.headers?.clone() ?? Headers(),
+      bodyData = BodyData.fromInit(init?.body) {
     _validateMethodAndBody();
     _applyDefaultBodyHeaders();
   }
@@ -22,68 +47,38 @@ class Request with BodyMixin {
     required this.bodyData,
   });
 
-  factory Request.text(
-    Uri url, {
-    String method = 'POST',
-    Headers? headers,
-    required String body,
-  }) {
-    return Request(url, method: method, headers: headers, body: body);
+  factory Request.text(Uri url, String body, [RequestInit? init]) {
+    return Request(url, _coerceInit(init, body: body));
   }
 
-  factory Request.json(
-    Uri url, {
-    String method = 'POST',
-    Headers? headers,
-    required Object? body,
-  }) {
-    final nextHeaders = headers?.clone() ?? Headers();
+  factory Request.json(Uri url, Object? body, [RequestInit? init]) {
+    final nextInit = _coerceInit(init, body: json.encode(body));
+    final nextHeaders = nextInit.headers?.clone() ?? Headers();
     if (!nextHeaders.has('content-type')) {
       nextHeaders.set('content-type', 'application/json; charset=utf-8');
     }
 
-    return Request(
-      url,
-      method: method,
-      headers: nextHeaders,
-      body: json.encode(body),
-    );
+    return Request(url, nextInit.copyWith(headers: nextHeaders));
   }
 
-  factory Request.bytes(
-    Uri url, {
-    String method = 'POST',
-    Headers? headers,
-    required List<int> body,
-  }) {
-    return Request(url, method: method, headers: headers, body: body);
+  factory Request.bytes(Uri url, List<int> body, [RequestInit? init]) {
+    return Request(url, _coerceInit(init, body: body));
   }
 
-  factory Request.stream(
-    Uri url, {
-    String method = 'POST',
-    Headers? headers,
-    required Stream<List<int>> body,
-  }) {
-    return Request(url, method: method, headers: headers, body: body);
+  factory Request.stream(Uri url, Stream<List<int>> body, [RequestInit? init]) {
+    return Request(url, _coerceInit(init, body: body));
   }
 
   factory Request.searchParams(
-    Uri url, {
-    String method = 'POST',
-    Headers? headers,
-    required URLSearchParams body,
-  }) {
-    return Request(url, method: method, headers: headers, body: body);
+    Uri url,
+    URLSearchParams body, [
+    RequestInit? init,
+  ]) {
+    return Request(url, _coerceInit(init, body: body));
   }
 
-  factory Request.formData(
-    Uri url, {
-    String method = 'POST',
-    Headers? headers,
-    required FormData body,
-  }) {
-    return Request(url, method: method, headers: headers, body: body);
+  factory Request.formData(Uri url, FormData body, [RequestInit? init]) {
+    return Request(url, _coerceInit(init, body: body));
   }
 
   /// Target URL.
@@ -119,13 +114,23 @@ class Request with BodyMixin {
     final hasBody = !identical(body, _sentinel);
     return Request(
       url ?? this.url,
-      method: method ?? this.method,
-      headers: headers ?? this.headers.clone(),
-      body: hasBody ? body : bodyData.clone(),
+      RequestInit(
+        method: method ?? this.method,
+        headers: headers ?? this.headers.clone(),
+        body: hasBody ? body : bodyData.clone(),
+      ),
     );
   }
 
   static const Object _sentinel = Object();
+
+  static RequestInit _coerceInit(RequestInit? init, {required Object? body}) {
+    return RequestInit(
+      method: init?.method ?? 'POST',
+      headers: init?.headers?.clone(),
+      body: body,
+    );
+  }
 
   static String _normalizeMethod(String value) {
     final normalized = value.trim().toUpperCase();
