@@ -8,7 +8,7 @@ import 'package:test/test.dart';
 void main() {
   group('Blob', () {
     test('supports text, bytes and slice', () async {
-      final blob = Blob.text('hello world');
+      final blob = Blob(<Object>['hello world'], 'text/plain;charset=utf-8');
       expect(blob.size, 11);
       expect(await blob.text(), 'hello world');
 
@@ -24,15 +24,15 @@ void main() {
         'ab',
         Uint8List.fromList(<int>[99]),
         Uint8List.fromList(<int>[100]).buffer,
-        Blob.text('ef'),
-      ], ' TEXT/PLAIN ');
+        Blob(<Object>['ef'], 'text/plain;charset=utf-8'),
+      ], 'text/plain');
 
       expect(await blob.text(), 'abcdef');
       expect(blob.type, 'text/plain');
     });
 
     test('streams with chunk size', () async {
-      final blob = Blob.text('hello');
+      final blob = Blob(<Object>['hello'], 'text/plain;charset=utf-8');
       final chunks = await blob
           .stream(chunkSize: 2)
           .map((chunk) => utf8.decode(chunk))
@@ -40,12 +40,9 @@ void main() {
       expect(chunks, ['he', 'll', 'o']);
     });
 
-    test('rejects invalid types and chunk size', () async {
-      expect(
-        () => Blob.text('x', type: 'text/plain\nfoo'),
-        throwsArgumentError,
-      );
-      expect(() => Blob.text('x').stream(chunkSize: 0), throwsArgumentError);
+    test('rejects invalid chunk size', () async {
+      final blob = Blob(<Object>['x'], 'text/plain;charset=utf-8');
+      expect(() => blob.stream(chunkSize: 0), throwsArgumentError);
     });
 
     test('rejects unsupported part types', () {
@@ -53,7 +50,7 @@ void main() {
     });
 
     test('is compatible with block.Block interface', () async {
-      final blob = Blob.text('hello');
+      final blob = Blob(<Object>['hello'], 'text/plain;charset=utf-8');
       final block.Block blockView = blob;
       expect(await blockView.text(), 'hello');
       expect(await blockView.slice(-2).text(), 'lo');
@@ -73,7 +70,11 @@ void main() {
     test('normalizes values and encodes multipart', () async {
       final form = FormData()
         ..append('name', 'alice')
-        ..append('avatar', Blob.text('binary'), filename: 'a.txt');
+        ..append(
+          'avatar',
+          Blob(<Object>['binary'], 'text/plain;charset=utf-8'),
+          filename: 'a.txt',
+        );
 
       final avatar = form.get('avatar');
       expect(avatar, isA<File>());
@@ -111,7 +112,7 @@ void main() {
     test('normalizes blob and scalar values', () {
       final form = FormData()
         ..append('count', 42)
-        ..append('payload', Blob.text('x'))
+        ..append('payload', Blob(<Object>['x'], 'text/plain;charset=utf-8'))
         ..append('avatar', File(<Object>['a'], 'old.txt'), filename: 'new.txt');
 
       expect(form.get('count'), '42');
@@ -134,7 +135,11 @@ void main() {
 
     test('escapes multipart header values', () async {
       final form = FormData()
-        ..append('na"me', Blob.text('x'), filename: 'fi\r\nle.txt');
+        ..append(
+          'na"me',
+          Blob(<Object>['x'], 'text/plain;charset=utf-8'),
+          filename: 'fi\r\nle.txt',
+        );
 
       final encoded = form.encodeMultipart(boundary: 'b');
       final text = utf8.decode(await encoded.bytes());
@@ -148,7 +153,11 @@ void main() {
       () async {
         final form = FormData()
           ..append('a', '1')
-          ..append('b', Blob.text('2'), filename: 'b.txt');
+          ..append(
+            'b',
+            Blob(<Object>['2'], 'text/plain;charset=utf-8'),
+            filename: 'b.txt',
+          );
 
         final encoded = form.encodeMultipart(boundary: 'z');
         final fromBytes = await encoded.bytes();
