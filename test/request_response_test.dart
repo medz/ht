@@ -103,7 +103,7 @@ void main() {
       await expectLater(request.text(), throwsStateError);
     });
 
-    test('constructor clones headers input', () {
+    test('constructor reuses headers input', () {
       final source = Headers({'x-id': '1'});
       final request = Request(
         Uri.parse('https://example.com'),
@@ -113,8 +113,8 @@ void main() {
       source.set('x-id', '2');
       request.headers.set('x-other', 'v');
 
-      expect(request.headers.get('x-id'), '1');
-      expect(source.has('x-other'), isFalse);
+      expect(request.headers.get('x-id'), '2');
+      expect(source.has('x-other'), isTrue);
     });
 
     test('clone fails after body has been consumed', () async {
@@ -190,15 +190,15 @@ void main() {
       );
     });
 
-    test('constructor clones headers input', () {
+    test('constructor reuses headers input', () {
       final source = Headers({'x-id': '1'});
       final response = Response.text('ok', ResponseInit(headers: source));
 
       source.set('x-id', '2');
       response.headers.set('x-other', 'v');
 
-      expect(response.headers.get('x-id'), '1');
-      expect(source.has('x-other'), isFalse);
+      expect(response.headers.get('x-id'), '2');
+      expect(source.has('x-other'), isTrue);
     });
 
     test('clone duplicates unread body', () async {

@@ -19,6 +19,7 @@ dependencies:
   block: ^1.0.0
   http_parser: ^4.1.2
   mime: ^2.0.0
+  web: ^1.1.1
 
 dev_dependencies:
   lints: ^6.1.0
