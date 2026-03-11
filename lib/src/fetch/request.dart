@@ -13,21 +13,6 @@ final class RequestInit {
   final String? method;
   final Headers? headers;
   final Object? body;
-
-  RequestInit copyWith({
-    String? method,
-    Headers? headers,
-    Object? body = _sentinel,
-  }) {
-    final hasBody = !identical(body, _sentinel);
-    return RequestInit(
-      method: method ?? this.method,
-      headers: headers ?? this.headers?.clone(),
-      body: hasBody ? body : this.body,
-    );
-  }
-
-  static const Object _sentinel = Object();
 }
 
 /// Fetch-like HTTP request model.
@@ -58,7 +43,14 @@ class Request with BodyMixin {
       nextHeaders.set('content-type', 'application/json; charset=utf-8');
     }
 
-    return Request(url, nextInit.copyWith(headers: nextHeaders));
+    return Request(
+      url,
+      RequestInit(
+        method: nextInit.method,
+        headers: nextHeaders,
+        body: nextInit.body,
+      ),
+    );
   }
 
   factory Request.bytes(Uri url, List<int> body, [RequestInit? init]) {
@@ -104,25 +96,6 @@ class Request with BodyMixin {
       bodyData: bodyData.clone(),
     );
   }
-
-  Request copyWith({
-    Uri? url,
-    String? method,
-    Headers? headers,
-    Object? body = _sentinel,
-  }) {
-    final hasBody = !identical(body, _sentinel);
-    return Request(
-      url ?? this.url,
-      RequestInit(
-        method: method ?? this.method,
-        headers: headers ?? this.headers.clone(),
-        body: hasBody ? body : bodyData.clone(),
-      ),
-    );
-  }
-
-  static const Object _sentinel = Object();
 
   static RequestInit _coerceInit(RequestInit? init, {required Object? body}) {
     return RequestInit(

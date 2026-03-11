@@ -12,14 +12,6 @@ final class ResponseInit {
   final int? status;
   final String? statusText;
   final Headers? headers;
-
-  ResponseInit copyWith({int? status, String? statusText, Headers? headers}) {
-    return ResponseInit(
-      status: status ?? this.status,
-      statusText: statusText ?? this.statusText,
-      headers: headers ?? this.headers?.clone(),
-    );
-  }
 }
 
 /// Fetch-like HTTP response model.
@@ -62,7 +54,11 @@ class Response with BodyMixin {
 
     return Response(
       json.encode(body),
-      (init ?? ResponseInit()).copyWith(headers: nextHeaders),
+      ResponseInit(
+        status: init?.status,
+        statusText: init?.statusText,
+        headers: nextHeaders,
+      ),
     );
   }
 
@@ -124,30 +120,6 @@ class Response with BodyMixin {
       redirected: redirected,
     );
   }
-
-  Response copyWith({
-    Object? body = _sentinel,
-    int? status,
-    String? statusText,
-    Headers? headers,
-    Uri? url,
-    bool? redirected,
-  }) {
-    final hasBody = !identical(body, _sentinel);
-
-    return Response._create(
-      hasBody ? body : bodyData.clone(),
-      ResponseInit(
-        status: status ?? this.status,
-        statusText: statusText ?? this.statusText,
-        headers: headers ?? this.headers.clone(),
-      ),
-      url: url ?? this.url,
-      redirected: redirected ?? this.redirected,
-    );
-  }
-
-  static const Object _sentinel = Object();
 
   static int _validateStatus(int status) {
     HttpStatus.validate(status);
