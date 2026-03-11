@@ -6,12 +6,11 @@ import 'headers.dart';
 
 /// Initialization options for [Response], aligned with Fetch `ResponseInit`.
 class ResponseInit {
-  ResponseInit({this.status, this.statusText, Headers? headers})
-    : headers = headers?.clone();
+  ResponseInit({this.status, this.statusText, this.headers});
 
   final int? status;
   final String? statusText;
-  final Headers? headers;
+  final HeadersInit? headers;
 }
 
 /// Fetch-like HTTP response model.
@@ -26,7 +25,7 @@ class Response with BodyMixin {
     required this.redirected,
   }) : status = _validateStatus(init?.status ?? HttpStatus.ok),
        statusText = init?.statusText ?? '',
-       headers = init?.headers?.clone() ?? Headers(),
+       headers = _headersFromInit(init?.headers),
        bodyData = BodyData.fromInit(body) {
     if (bodyData.hasBody && _statusDisallowsBody(status)) {
       throw ArgumentError.value(
@@ -52,7 +51,7 @@ class Response with BodyMixin {
   }
 
   factory Response.json(Object? body, [ResponseInit? init]) {
-    final nextHeaders = init?.headers?.clone() ?? Headers();
+    final nextHeaders = _headersFromInit(init?.headers);
     if (!nextHeaders.has('content-type')) {
       nextHeaders.set('content-type', 'application/json; charset=utf-8');
     }
@@ -119,7 +118,7 @@ class Response with BodyMixin {
     return Response._internal(
       status: status,
       statusText: statusText,
-      headers: headers.clone(),
+      headers: Headers(headers.entries()),
       bodyData: bodyData.clone(),
       url: url,
       redirected: redirected,
@@ -133,6 +132,14 @@ class Response with BodyMixin {
 
   static bool _statusDisallowsBody(int status) {
     return status == 204 || status == 205 || status == 304;
+  }
+
+  static Headers _headersFromInit(HeadersInit? init) {
+    return switch (init) {
+      null => Headers(),
+      final Headers headers => headers,
+      _ => Headers(init),
+    };
   }
 
   void _applyDefaultBodyHeaders() {

@@ -7,11 +7,10 @@ import 'url_search_params.dart';
 
 /// Initialization options for [Request], aligned with Fetch `RequestInit`.
 class RequestInit {
-  RequestInit({this.method, Headers? headers, this.body})
-    : headers = headers?.clone();
+  RequestInit({this.method, this.headers, this.body});
 
   final String? method;
-  final Headers? headers;
+  final HeadersInit? headers;
   final Object? body;
 }
 
@@ -21,7 +20,7 @@ class Request with BodyMixin {
     : this._create(
         url: url,
         method: init?.method ?? 'GET',
-        headers: init?.headers?.clone() ?? Headers(),
+        headers: _headersFromInit(init?.headers),
         bodyData: BodyData.fromInit(init?.body),
       );
 
@@ -48,7 +47,7 @@ class Request with BodyMixin {
 
   factory Request.json(Uri url, Object? body, [RequestInit? init]) {
     final nextInit = _coerceInit(init, body: json.encode(body));
-    final nextHeaders = nextInit.headers ?? Headers();
+    final nextHeaders = _headersFromInit(nextInit.headers);
     if (!nextHeaders.has('content-type')) {
       nextHeaders.set('content-type', 'application/json; charset=utf-8');
     }
@@ -100,7 +99,7 @@ class Request with BodyMixin {
     return Request._internal(
       url: url,
       method: method,
-      headers: headers.clone(),
+      headers: Headers(headers.entries()),
       bodyData: bodyData.clone(),
     );
   }
@@ -108,9 +107,17 @@ class Request with BodyMixin {
   static RequestInit _coerceInit(RequestInit? init, {required Object? body}) {
     return RequestInit(
       method: init?.method ?? 'POST',
-      headers: init?.headers?.clone(),
+      headers: init?.headers,
       body: body,
     );
+  }
+
+  static Headers _headersFromInit(HeadersInit? init) {
+    return switch (init) {
+      null => Headers(),
+      final Headers headers => headers,
+      _ => Headers(init),
+    };
   }
 
   static String _normalizeMethod(String value) {

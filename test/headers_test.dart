@@ -15,7 +15,13 @@ void main() {
         ..append('accept', 'application/json')
         ..append('accept', 'text/plain');
 
-      expect(headers.getAll('accept'), ['application/json', 'text/plain']);
+      expect(
+        headers
+            .entries()
+            .where((entry) => entry.key == 'accept')
+            .map((entry) => entry.value),
+        ['application/json', 'text/plain'],
+      );
       expect(headers.get('accept'), 'application/json, text/plain');
     });
 
@@ -24,16 +30,16 @@ void main() {
         ..append('set-cookie', 'a=1')
         ..append('set-cookie', 'b=2');
 
-      expect(headers.get('set-cookie'), 'a=1');
+      expect(headers.get('set-cookie'), isNull);
       expect(headers.getSetCookie(), ['a=1', 'b=2']);
     });
 
-    test('clone creates independent copy', () {
+    test('constructor from entries creates independent copy', () {
       final headers = Headers({'x-id': '1'});
-      final clone = headers.clone()..set('x-id', '2');
+      final copy = Headers(headers.entries())..set('x-id', '2');
 
       expect(headers.get('x-id'), '1');
-      expect(clone.get('x-id'), '2');
+      expect(copy.get('x-id'), '2');
     });
 
     test('rejects invalid names', () {
@@ -43,14 +49,20 @@ void main() {
       expect(() => headers.set('x-test', 'line\nbreak'), throwsArgumentError);
     });
 
-    test('supports construction from entries and iteration', () {
-      final headers = Headers.fromEntries(<MapEntry<String, String>>[
+    test('supports construction from entry iterables and iteration', () {
+      final headers = Headers(<MapEntry<String, String>>[
         const MapEntry<String, String>('X-A', '1'),
         const MapEntry<String, String>('X-A', '2'),
         const MapEntry<String, String>('X-B', '3'),
       ]);
 
-      expect(headers.getAll('x-a'), ['1', '2']);
+      expect(
+        headers
+            .entries()
+            .where((entry) => entry.key == 'x-a')
+            .map((entry) => entry.value),
+        ['1', '2'],
+      );
       expect(headers.map((entry) => '${entry.key}:${entry.value}').toList(), [
         'x-a:1',
         'x-a:2',
@@ -58,25 +70,25 @@ void main() {
       ]);
     });
 
-    test('names and toMap are normalized and deterministic', () {
+    test('keys and values are normalized and deterministic', () {
       final headers = Headers()
         ..append('X-A', '1')
         ..append('x-a', '2')
         ..append('X-B', '3');
 
-      expect(headers.names().toList(), ['x-a', 'x-b']);
-      expect(headers.toMap(), {'x-a': '1, 2', 'x-b': '3'});
+      expect(headers.keys().toList(), ['x-a', 'x-b']);
+      expect(headers.values().toList(), ['1', '2', '3']);
     });
 
-    test('clear removes all values', () {
+    test('delete removes all values', () {
       final headers = Headers()
         ..append('x-a', '1')
         ..append('x-b', '2')
-        ..clear();
+        ..delete('x-b');
 
-      expect(headers.has('x-a'), isFalse);
-      expect(headers.getAll('x-b'), isEmpty);
-      expect(headers, isEmpty);
+      expect(headers.has('x-a'), isTrue);
+      expect(headers.get('x-b'), isNull);
+      expect(headers.keys().toList(), ['x-a']);
     });
   });
 }
