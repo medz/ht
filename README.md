@@ -11,7 +11,7 @@ This package focuses on the **type and semantics layer** only. It does not imple
 
 ## Features
 
-- Fetch-style primitives: `Request`, `Response`, `Headers`, `URLSearchParams`, `Blob`, `File`, `FormData`
+- Fetch-style primitives: `Request`, `RequestInit`, `Response`, `ResponseInit`, `Headers`, `URLSearchParams`, `Blob`, `File`, `FormData`
 - Protocol helpers: `HttpMethod`, `HttpStatus`, `HttpVersion`, `MimeType`
 - Consistent body-read semantics (single-consume), clone semantics, and header normalization
 - Designed as a shared HTTP type layer for downstream client/server frameworks
@@ -42,7 +42,7 @@ The goal is to provide stable and reusable HTTP types and behavior contracts.
 | Category | Types |
 | --- | --- |
 | Protocol | `HttpMethod`, `HttpStatus`, `HttpVersion`, `MimeType` |
-| Message | `Request`, `Response`, `BodyMixin`, `BodyInit` |
+| Message | `Request`, `RequestInit`, `Response`, `ResponseInit`, `BodyMixin`, `BodyInit` |
 | Header/URL | `Headers`, `URLSearchParams` |
 | Binary/Form | `Blob`, `File`, `FormData` |
 
@@ -54,13 +54,12 @@ import 'package:ht/ht.dart';
 Future<void> main() async {
   final request = Request.json(
     Uri.parse('https://api.example.com/tasks'),
-    method: HttpMethod.post.value,
-    body: {'title': 'rewrite ht'},
+    {'title': 'rewrite ht'},
   );
 
   final response = Response.json(
     {'ok': true},
-    status: HttpStatus.created,
+    ResponseInit(status: HttpStatus.created),
   );
 
   print(request.method); // POST
@@ -109,8 +108,7 @@ Future<void> main() async {
   final body = block.Block(<Object>['hello'], type: 'text/plain');
   final request = Request(
     Uri.parse('https://example.com'),
-    method: 'POST',
-    body: body,
+    RequestInit(method: 'POST', body: body),
   );
 
   print(request.headers.get('content-type'));   // text/plain

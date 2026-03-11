@@ -8,6 +8,8 @@ void main() {
     const status = HttpStatus.ok;
     const version = HttpVersion.http11;
     final mime = MimeType.json;
+    final requestInit = RequestInit(method: method.value);
+    final responseInit = ResponseInit(status: status);
 
     final headers = Headers({'content-type': mime.toString()});
     final params = URLSearchParams('a=1');
@@ -19,12 +21,11 @@ void main() {
 
     final request = Request.formData(
       Uri.parse('https://example.com/upload'),
-      method: method.value,
-      headers: headers,
-      body: form,
+      form,
+      requestInit.copyWith(headers: headers),
     );
 
-    final response = Response(body: blockBody, status: status);
+    final response = Response(blockBody, responseInit);
 
     final BodyInit init = 'x';
 
@@ -34,6 +35,8 @@ void main() {
     expect(params.get('a'), '1');
     expect(await blob.text(), 'hello');
     expect(file.name, 'hello.txt');
+    expect(requestInit.method, 'POST');
+    expect(responseInit.status, 200);
     expect(request.headers.has('content-type'), isTrue);
     expect(await multipart.bytes(), isNotEmpty);
     expect(await response.text(), 'block-body');
