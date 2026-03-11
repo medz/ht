@@ -5,7 +5,7 @@ import 'body.dart';
 import 'headers.dart';
 
 /// Initialization options for [Response], aligned with Fetch `ResponseInit`.
-final class ResponseInit {
+class ResponseInit {
   ResponseInit({this.status, this.statusText, Headers? headers})
     : headers = headers?.clone();
 

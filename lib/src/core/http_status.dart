@@ -1,5 +1,5 @@
 /// HTTP status-code helpers and well-known constants.
-final class HttpStatus {
+class HttpStatus {
   const HttpStatus._();
 
   static const int continue_ = 100;

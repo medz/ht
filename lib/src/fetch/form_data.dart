@@ -7,7 +7,7 @@ import 'blob.dart';
 import 'file.dart';
 
 /// Multipart body payload generated from [FormData].
-final class MultipartBody {
+class MultipartBody {
   MultipartBody._({
     required Stream<Uint8List> Function() streamFactory,
     required this.boundary,

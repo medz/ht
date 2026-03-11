@@ -143,7 +143,7 @@ class Headers extends IterableBase<MapEntry<String, String>> {
   }
 }
 
-final class _HeaderEntry {
+class _HeaderEntry {
   const _HeaderEntry({
     required this.originalName,
     required this.normalizedName,

@@ -38,7 +38,7 @@ mixin BodyMixin {
 }
 
 /// Internal body storage that supports cloning and one-time consumption.
-final class BodyData {
+class BodyData {
   BodyData.empty()
     : _present = false,
       _bytes = null,

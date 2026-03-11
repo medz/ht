@@ -6,7 +6,7 @@ import 'headers.dart';
 import 'url_search_params.dart';
 
 /// Initialization options for [Request], aligned with Fetch `RequestInit`.
-final class RequestInit {
+class RequestInit {
   RequestInit({this.method, Headers? headers, this.body})
     : headers = headers?.clone();
 
