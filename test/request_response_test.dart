@@ -117,26 +117,6 @@ void main() {
       expect(source.has('x-other'), isFalse);
     });
 
-    test('copyWith clones body when omitted and can replace body', () async {
-      final request = Request.text(Uri.parse('https://example.com'), 'payload');
-
-      final copied = request.copyWith(method: 'PUT');
-      final replaced = request.copyWith(method: 'PATCH', body: 'next');
-
-      expect(copied.method, 'PUT');
-      expect(replaced.method, 'PATCH');
-      expect(await request.text(), 'payload');
-      expect(await copied.text(), 'payload');
-      expect(await replaced.text(), 'next');
-    });
-
-    test('copyWith without body fails after body has been consumed', () async {
-      final request = Request.text(Uri.parse('https://example.com'), 'x');
-      await request.text();
-
-      expect(() => request.copyWith(method: 'PUT'), throwsStateError);
-    });
-
     test('clone fails after body has been consumed', () async {
       final request = Request.text(Uri.parse('https://example.com'), 'x');
       await request.text();
@@ -225,29 +205,6 @@ void main() {
 
       expect(await response.text(), 'payload');
       expect(await clone.text(), 'payload');
-    });
-
-    test(
-      'copyWith clones body when omitted and supports body override',
-      () async {
-        final response = Response.text('payload', ResponseInit(status: 200));
-        final copied = response.copyWith(status: 201);
-        final replaced = response.copyWith(body: 'other');
-        final emptied = response.copyWith(body: null);
-
-        expect(copied.status, 201);
-        expect(await response.text(), 'payload');
-        expect(await copied.text(), 'payload');
-        expect(await replaced.text(), 'other');
-        expect(await emptied.bytes(), isEmpty);
-      },
-    );
-
-    test('copyWith without body fails after body has been consumed', () async {
-      final response = Response.text('x');
-      await response.text();
-
-      expect(() => response.copyWith(status: 201), throwsStateError);
     });
 
     test('blob type prefers explicit content-type header', () async {

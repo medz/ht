@@ -22,7 +22,7 @@ void main() {
     final request = Request.formData(
       Uri.parse('https://example.com/upload'),
       form,
-      requestInit.copyWith(headers: headers),
+      RequestInit(method: requestInit.method, headers: headers),
     );
 
     final response = Response(blockBody, responseInit);
