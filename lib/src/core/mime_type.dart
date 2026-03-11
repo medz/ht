@@ -4,7 +4,7 @@ import 'package:http_parser/http_parser.dart' as http_parser;
 import 'package:mime/mime.dart' as mime;
 
 /// Thrown when a MIME type cannot be created from input.
-final class MimeTypeFormatException implements FormatException {
+class MimeTypeFormatException implements FormatException {
   MimeTypeFormatException(this.message, [this.source]);
 
   @override
@@ -21,7 +21,7 @@ final class MimeTypeFormatException implements FormatException {
 }
 
 /// Immutable MIME type value object.
-final class MimeType {
+class MimeType {
   MimeType(
     String type,
     String subtype, [
