@@ -25,11 +25,16 @@ class Response with BodyMixin {
     required this.url,
     required this.redirected,
   }) : status = _validateStatus(init?.status ?? HttpStatus.ok),
-       statusText =
-           init?.statusText ??
-           HttpStatus.reasonPhrase(init?.status ?? HttpStatus.ok),
+       statusText = init?.statusText ?? '',
        headers = init?.headers?.clone() ?? Headers(),
        bodyData = BodyData.fromInit(body) {
+    if (bodyData.hasBody && _statusDisallowsBody(status)) {
+      throw ArgumentError.value(
+        status,
+        'status',
+        'Responses with status $status must not include a body',
+      );
+    }
     _applyDefaultBodyHeaders();
   }
 
@@ -80,8 +85,8 @@ class Response with BodyMixin {
     return Response._create(
       null,
       ResponseInit(status: status, headers: nextHeaders),
-      url: location,
-      redirected: true,
+      url: null,
+      redirected: false,
     );
   }
 
@@ -124,6 +129,10 @@ class Response with BodyMixin {
   static int _validateStatus(int status) {
     HttpStatus.validate(status);
     return status;
+  }
+
+  static bool _statusDisallowsBody(int status) {
+    return status == 204 || status == 205 || status == 304;
   }
 
   void _applyDefaultBodyHeaders() {

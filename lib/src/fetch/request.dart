@@ -17,10 +17,20 @@ class RequestInit {
 
 /// Fetch-like HTTP request model.
 class Request with BodyMixin {
-  Request(this.url, [RequestInit? init])
-    : method = _normalizeMethod(init?.method ?? 'GET'),
-      headers = init?.headers?.clone() ?? Headers(),
-      bodyData = BodyData.fromInit(init?.body) {
+  Request(Uri url, [RequestInit? init])
+    : this._create(
+        url: url,
+        method: init?.method ?? 'GET',
+        headers: init?.headers?.clone() ?? Headers(),
+        bodyData: BodyData.fromInit(init?.body),
+      );
+
+  Request._create({
+    required this.url,
+    required String method,
+    required this.headers,
+    required this.bodyData,
+  }) : method = _normalizeMethod(method) {
     _validateMethodAndBody();
     _applyDefaultBodyHeaders();
   }
@@ -38,18 +48,16 @@ class Request with BodyMixin {
 
   factory Request.json(Uri url, Object? body, [RequestInit? init]) {
     final nextInit = _coerceInit(init, body: json.encode(body));
-    final nextHeaders = nextInit.headers?.clone() ?? Headers();
+    final nextHeaders = nextInit.headers ?? Headers();
     if (!nextHeaders.has('content-type')) {
       nextHeaders.set('content-type', 'application/json; charset=utf-8');
     }
 
-    return Request(
-      url,
-      RequestInit(
-        method: nextInit.method,
-        headers: nextHeaders,
-        body: nextInit.body,
-      ),
+    return Request._create(
+      url: url,
+      method: nextInit.method ?? 'POST',
+      headers: nextHeaders,
+      bodyData: BodyData.fromInit(nextInit.body),
     );
   }
 
