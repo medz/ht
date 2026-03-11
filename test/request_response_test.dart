@@ -148,6 +148,7 @@ void main() {
       final response = Response.json({'ok': true});
 
       expect(response.status, 200);
+      expect(response.statusText, '');
       expect(response.ok, isTrue);
       expect(
         response.headers.get('content-type'),
@@ -169,14 +170,15 @@ void main() {
       final response = Response.empty();
 
       expect(response.status, HttpStatus.noContent);
-      expect(response.statusText, 'No Content');
+      expect(response.statusText, '');
       expect(response.body, isNull);
       expect(await response.bytes(), isEmpty);
     });
 
     test('redirect response sets location and redirect metadata', () {
       final response = Response.redirect(Uri.parse('https://example.com/next'));
-      expect(response.redirected, isTrue);
+      expect(response.redirected, isFalse);
+      expect(response.url, isNull);
       expect(response.headers.get('location'), 'https://example.com/next');
       expect(response.status, 302);
     });
@@ -227,6 +229,16 @@ void main() {
         () => Response(null, ResponseInit(status: 600)),
         throwsArgumentError,
       );
+    });
+
+    test('rejects body for null-body statuses', () {
+      for (final status in const <int>[204, 205, 304]) {
+        expect(
+          () => Response('payload', ResponseInit(status: status)),
+          throwsArgumentError,
+          reason: 'status=$status',
+        );
+      }
     });
   });
 }
