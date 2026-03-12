@@ -1,4 +1,4 @@
-import 'package:ht/ht.dart';
+import 'package:ht/src/fetch/url_search_params.dart';
 import 'package:test/test.dart';
 
 void main() {
@@ -48,12 +48,31 @@ void main() {
       expect(params.has('a', '2'), isFalse);
     });
 
-    test('clone is independent', () {
+    test('copy construction is independent', () {
       final params = URLSearchParams('a=1');
-      final clone = params.clone()..set('a', '2');
+      final copy = URLSearchParams(params)..set('a', '2');
 
       expect(params.get('a'), '1');
-      expect(clone.get('a'), '2');
+      expect(copy.get('a'), '2');
+    });
+
+    test('exposes size, entries, keys, and values', () {
+      final params = URLSearchParams('?a=1&a=2&b=3');
+
+      expect(params.size, 3);
+      expect(
+        params
+            .entries()
+            .map((entry) => [entry.key, entry.value])
+            .toList(growable: false),
+        [
+          ['a', '1'],
+          ['a', '2'],
+          ['b', '3'],
+        ],
+      );
+      expect(params.keys(), ['a', 'a', 'b']);
+      expect(params.values(), ['1', '2', '3']);
     });
 
     test('handles key without equal-sign', () {
