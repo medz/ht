@@ -1,9 +1,11 @@
 import 'dart:convert';
+import 'dart:math';
 import 'dart:typed_data';
 
 import 'blob.dart';
 import 'body.dart';
 import 'file.dart';
+import 'headers.dart';
 import 'url_search_params.dart';
 
 sealed class Multipart {
@@ -36,6 +38,36 @@ final class BlobMultipart extends File implements Multipart {
       );
 
   final String filename;
+}
+
+final class EncodedFormData {
+  EncodedFormData._({
+    required Stream<Uint8List> Function() streamFactory,
+    required this.boundary,
+    required this.contentLength,
+  }) : _streamFactory = streamFactory;
+
+  final Stream<Uint8List> Function() _streamFactory;
+  final String boundary;
+  final int contentLength;
+
+  String get contentType => 'multipart/form-data; boundary=$boundary';
+
+  Stream<Uint8List> get stream => _streamFactory();
+
+  Future<Uint8List> bytes() async {
+    final builder = BytesBuilder(copy: false);
+    await for (final chunk in _streamFactory()) {
+      builder.add(chunk);
+    }
+    return builder.takeBytes();
+  }
+
+  void applyTo(Headers headers) {
+    headers
+      ..set('content-type', contentType)
+      ..set('content-length', contentLength.toString());
+  }
 }
 
 class FormData with Iterable<MapEntry<String, Multipart>> {
@@ -99,6 +131,19 @@ class FormData with Iterable<MapEntry<String, Multipart>> {
   void set(String name, Multipart value) {
     delete(name);
     append(name, value);
+  }
+
+  EncodedFormData encodeMultipart({String? boundary}) {
+    final safeBoundary = boundary ?? _generateBoundary();
+    final snapshot = _entries
+        .map((entry) => MapEntry<String, Multipart>(entry.key, entry.value))
+        .toList(growable: false);
+
+    return EncodedFormData._(
+      streamFactory: () => _encodeMultipart(snapshot, safeBoundary),
+      boundary: safeBoundary,
+      contentLength: _calculateMultipartLength(snapshot, safeBoundary),
+    );
   }
 
   static Future<FormData> _parseUrlEncoded(Body body) async {
@@ -321,4 +366,95 @@ class FormData with Iterable<MapEntry<String, Multipart>> {
 
     return true;
   }
+
+  static String _escapeHeaderValue(String value) {
+    return value
+        .replaceAll('\\', '\\\\')
+        .replaceAll('"', '\\"')
+        .replaceAll('\r', '\\r')
+        .replaceAll('\n', '\\n');
+  }
+
+  static String _generateBoundary() {
+    const alphabet = 'abcdefghijklmnopqrstuvwxyz0123456789';
+    final random = Random.secure();
+    final suffix = List<String>.generate(
+      24,
+      (_) => alphabet[random.nextInt(alphabet.length)],
+      growable: false,
+    ).join();
+    return '----ht-$suffix';
+  }
+
+  static Stream<Uint8List> _encodeMultipart(
+    List<MapEntry<String, Multipart>> entries,
+    String boundary,
+  ) async* {
+    for (final entry in entries) {
+      yield _utf8('--$boundary\r\n');
+
+      switch (entry.value) {
+        case final BlobMultipart blob:
+          yield _utf8(
+            'Content-Disposition: form-data; '
+            'name="${_escapeHeaderValue(entry.key)}"; '
+            'filename="${_escapeHeaderValue(blob.filename)}"\r\n',
+          );
+
+          final type = blob.type.isEmpty ? 'application/octet-stream' : blob.type;
+          yield _utf8('Content-Type: $type\r\n\r\n');
+          yield* blob.stream();
+          yield _utf8('\r\n');
+        case final TextMultipart text:
+          yield _utf8(
+            'Content-Disposition: form-data; '
+            'name="${_escapeHeaderValue(entry.key)}"\r\n\r\n',
+          );
+          yield _utf8(text.value);
+          yield _utf8('\r\n');
+      }
+    }
+
+    yield _utf8('--$boundary--\r\n');
+  }
+
+  static int _calculateMultipartLength(
+    List<MapEntry<String, Multipart>> entries,
+    String boundary,
+  ) {
+    var total = 0;
+
+    for (final entry in entries) {
+      total += _utf8Length('--$boundary\r\n');
+
+      switch (entry.value) {
+        case final BlobMultipart blob:
+          total += _utf8Length(
+            'Content-Disposition: form-data; '
+            'name="${_escapeHeaderValue(entry.key)}"; '
+            'filename="${_escapeHeaderValue(blob.filename)}"\r\n',
+          );
+
+          final type = blob.type.isEmpty ? 'application/octet-stream' : blob.type;
+          total += _utf8Length('Content-Type: $type\r\n\r\n');
+          total += blob.size;
+          total += _utf8Length('\r\n');
+        case final TextMultipart text:
+          total += _utf8Length(
+            'Content-Disposition: form-data; '
+            'name="${_escapeHeaderValue(entry.key)}"\r\n\r\n',
+          );
+          total += _utf8Length(text.value);
+          total += _utf8Length('\r\n');
+      }
+    }
+
+    total += _utf8Length('--$boundary--\r\n');
+    return total;
+  }
+
+  static int _utf8Length(String value) => utf8.encode(value).length;
+
+  static Uint8List _utf8(String value) =>
+      Uint8List.fromList(utf8.encode(value));
 }
