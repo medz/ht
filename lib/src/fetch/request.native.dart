@@ -3,7 +3,7 @@ import 'dart:typed_data';
 import '../core/http_method.dart';
 import 'body.dart';
 import 'blob.dart';
-import 'form_data.dart';
+import 'form_data.native.dart';
 import 'headers.dart';
 
 enum RequestMode {
@@ -184,14 +184,24 @@ class Request {
     return Blob(<Object>[blob], type);
   }
 
-  Future<Uint8List> bytes() async {
+  Future<Uint8List> bytes() {
     return switch (body) {
-      Blob(:final bytes) => bytes(),
-      _ => Uint8List(0),
+      final Body body => body.bytes(),
+      null => Future<Uint8List>.value(Uint8List(0)),
     };
   }
 
-  Future<FormData> formData() => throw UnimplementedError();
+  Future<FormData> formData() {
+    return switch (body) {
+      final Body body => FormData.parse(
+        body,
+        contentType: headers.get('content-type'),
+      ),
+      null => Future<FormData>.error(
+        const FormatException('Cannot decode form data from an empty body.'),
+      ),
+    };
+  }
 
   Future<T> json<T>() {
     return switch (body) {
@@ -209,7 +219,25 @@ class Request {
     };
   }
 
-  Request clone() => throw UnimplementedError();
+  Request clone() {
+    return Request(
+      RequestInput.string(url),
+      RequestInit(
+        method: method,
+        headers: Headers(headers),
+        body: body?.clone(),
+        referrer: referrer,
+        referrerPolicy: referrerPolicy,
+        mode: mode,
+        credentials: credentials,
+        cache: cache,
+        redirect: redirect,
+        integrity: integrity,
+        keepalive: keepalive,
+        duplex: duplex,
+      ),
+    );
+  }
 
   static Headers _headersFromInput(RequestInput input, HeadersInit? init) {
     if (init != null) return Headers(init);
