@@ -1,5 +1,7 @@
 import 'blob.dart';
+import 'body.dart';
 import 'file.dart';
+import 'url_search_params.dart';
 
 sealed class MultipartBody {
   const MultipartBody();
@@ -27,6 +29,19 @@ final class BlobMultipartBody extends File implements MultipartBody {
 }
 
 class FormData with Iterable<MapEntry<String, MultipartBody>> {
+  static Future<FormData> parse(Body body, {String? contentType}) async {
+    final essence = _contentTypeEssence(contentType);
+    return switch (essence) {
+      'application/x-www-form-urlencoded' => _parseUrlEncoded(body),
+      'multipart/form-data' => throw UnimplementedError(
+        'Multipart form-data parsing is not implemented yet.',
+      ),
+      _ => throw UnsupportedError(
+        'Unsupported form content type: ${contentType ?? '(missing)'}',
+      ),
+    };
+  }
+
   final _entries = <MapEntry<String, MultipartBody>>[];
 
   @override
@@ -75,5 +90,24 @@ class FormData with Iterable<MapEntry<String, MultipartBody>> {
   void set(String name, MultipartBody value) {
     delete(name);
     append(name, value);
+  }
+
+  static Future<FormData> _parseUrlEncoded(Body body) async {
+    final params = URLSearchParams(await body.text());
+    final formData = FormData();
+    for (final MapEntry(:key, :value) in params.entries()) {
+      formData.append(key, MultipartBody.text(value));
+    }
+    return formData;
+  }
+
+  static String _contentTypeEssence(String? contentType) {
+    if (contentType == null) return '';
+
+    final separator = contentType.indexOf(';');
+    final essence = separator == -1
+        ? contentType
+        : contentType.substring(0, separator);
+    return essence.trim().toLowerCase();
   }
 }
