@@ -1,7 +1,10 @@
+import 'dart:typed_data';
+
 import 'package:ht/src/fetch/body.dart';
 import 'package:ht/src/fetch/blob.dart';
 import 'package:ht/src/fetch/form_data.dart' as legacy;
 import 'package:ht/src/fetch/form_data.native.dart';
+import 'package:ht/src/fetch/headers.dart';
 import 'package:test/test.dart';
 
 void main() {
@@ -79,6 +82,39 @@ void main() {
       expect(blob.filename, 'a.txt');
       expect(blob.type, 'text/plain;charset=utf-8');
       expect(await blob.text(), 'binary');
+    });
+  });
+
+  group('FormData.encodeMultipart (native)', () {
+    test('returns encoded multipart metadata and payload', () async {
+      final encoded =
+          (FormData()
+                ..append('name', Multipart.text('alice'))
+                ..append(
+                  'avatar',
+                  Multipart.blob(
+                    Blob(<BlobPart>['binary'], 'text/plain;charset=utf-8'),
+                    'a.txt',
+                  ),
+                ))
+              .encodeMultipart(boundary: 'native-boundary');
+
+      final headers = Headers();
+      encoded.applyTo(headers);
+
+      expect(
+        headers.get('content-type'),
+        'multipart/form-data; boundary=native-boundary',
+      );
+      expect(headers.get('content-length'), encoded.contentLength.toString());
+
+      final bytes = await encoded.bytes();
+      final fromStream = BytesBuilder(copy: false);
+      await for (final chunk in encoded.stream) {
+        fromStream.add(chunk);
+      }
+
+      expect(fromStream.takeBytes(), bytes);
     });
   });
 }
