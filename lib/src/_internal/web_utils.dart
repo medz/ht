@@ -82,3 +82,27 @@ extension type Headers._(JSObject _) implements web.Headers {
 extension type Array<T extends JSAny?>._(JSAny _) {
   external static bool isArray(JSAny _);
 }
+
+extension type URLSearchParams._(JSObject _) implements web.URLSearchParams {
+  external factory URLSearchParams([JSAny init]);
+
+  external ArrayIterator entries();
+  external ArrayIterator keys();
+  external ArrayIterator values();
+
+  @JS('toString')
+  external String stringify();
+
+  factory URLSearchParams.fromEntries(
+    Iterable<MapEntry<String, String>> entries,
+  ) {
+    final params = URLSearchParams();
+    for (final MapEntry(key: name, :value) in entries) {
+      params.append(name, value);
+    }
+    return params;
+  }
+
+  factory URLSearchParams.fromMap(Map<String, String> map) =>
+      URLSearchParams.fromEntries(map.entries);
+}
