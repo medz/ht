@@ -3,8 +3,10 @@ library;
 
 import 'dart:js_interop';
 
+import 'package:web/web.dart' as dom;
+
 import 'url_search_params.native.dart' as native;
-import '../_internal/web_utils.dart' as web;
+import '../_internal/web_utils.dart' as web_utils;
 
 class URLSearchParams
     with Iterable<MapEntry<String, String>>
@@ -13,15 +15,15 @@ class URLSearchParams
 
   factory URLSearchParams([Object? init]) {
     final host = switch (init) {
-      null => web.URLSearchParams(),
-      final String source => web.URLSearchParams(source.toJS),
-      URLSearchParams(:final _host) => web.URLSearchParams(_host),
-      final native.URLSearchParams params => web.URLSearchParams.fromEntries(
-        params,
-      ),
-      final Map<String, String> map => web.URLSearchParams.fromMap(map),
+      null => web_utils.URLSearchParams(),
+      final String source => web_utils.URLSearchParams(source.toJS),
+      URLSearchParams(:final _host) => web_utils.URLSearchParams(_host),
+      final dom.URLSearchParams host => web_utils.URLSearchParams(host),
+      final native.URLSearchParams params =>
+        web_utils.URLSearchParams.fromEntries(params),
+      final Map<String, String> map => web_utils.URLSearchParams.fromMap(map),
       final Iterable<MapEntry<String, String>> entries =>
-        web.URLSearchParams.fromEntries(entries),
+        web_utils.URLSearchParams.fromEntries(entries),
       _ => throw ArgumentError.value(
         init,
         'init',
@@ -32,7 +34,7 @@ class URLSearchParams
     return URLSearchParams._(host);
   }
 
-  final web.URLSearchParams _host;
+  final web_utils.URLSearchParams _host;
 
   @override
   Iterator<MapEntry<String, String>> get iterator => _entries().iterator;
