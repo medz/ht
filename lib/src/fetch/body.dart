@@ -1,104 +1,78 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 
-import 'package:async/async.dart';
 import 'package:block/block.dart' as block;
 
+import '../_internal/stream_tee.dart';
 import 'blob.dart';
 import 'form_data.dart';
 import 'url_search_params.dart';
 
-/// Request/response body initializer.
-typedef BodyInit = Object;
+/// Constructor input accepted by body implementations.
+///
+/// Standard detached forms:
+/// - [String]
+/// - [Uint8List]
+/// - [ByteBuffer]
+/// - [List<int>]
+/// - [Stream<List<int>>]
+/// - [Blob]
+/// - [Body]
+/// - [block.Block]
+/// - [FormData]
+/// - [URLSearchParams]
+///
+/// Platform-specific extensions:
+/// - `dart:io File` on io
+///
+/// Native bodies normalize supported inputs into a detached [block.Block]
+/// when possible. Platform implementations may accept additional host-backed
+/// inputs before materialization.
+typedef BodyInit = Object?;
 
-/// Fetch-like body behavior shared by request/response objects.
-mixin BodyMixin {
-  BodyData get bodyData;
+/// Native detached body implementation.
+///
+/// This is the shared body baseline that web/io implementations can align to,
+/// but it is intentionally not wired into the existing fetch types yet.
+class Body extends Stream<Uint8List> {
+  Body._({block.Block? blockHost, Stream<Uint8List>? streamHost})
+    : assert(blockHost != null || streamHost != null),
+      _blockHost = blockHost,
+      _streamHost = streamHost;
 
-  /// Optional MIME hint used by [blob].
-  String? get bodyMimeTypeHint => null;
-
-  Stream<Uint8List>? get body => bodyData.consumeAsStream();
-
-  bool get bodyUsed => bodyData.isUsed;
-
-  Future<Uint8List> bytes() => bodyData.consumeAsBytes();
-
-  Future<String> text([Encoding encoding = utf8]) =>
-      bodyData.consumeAsText(encoding);
-
-  Future<T> json<T>() => bodyData.consumeAsJson<T>();
-
-  Future<Blob> blob() async {
-    return Blob.bytes(
-      await bytes(),
-      type: bodyMimeTypeHint ?? bodyData.defaultContentType ?? '',
-    );
-  }
-}
-
-/// Internal body storage that supports cloning and one-time consumption.
-class BodyData {
-  BodyData.empty()
-    : _present = false,
-      _bytes = null,
-      _splitter = null,
-      _branch = null,
-      defaultContentType = null,
-      defaultContentLength = null;
-
-  BodyData.bytes(List<int> bytes, {this.defaultContentType})
-    : _present = true,
-      _bytes = Uint8List.fromList(bytes),
-      _splitter = null,
-      _branch = null,
-      defaultContentLength = bytes.length;
-
-  BodyData.stream(
-    Stream<List<int>> stream, {
-    this.defaultContentType,
-    this.defaultContentLength,
-  }) : _present = true,
-       _bytes = null,
-       _splitter = StreamSplitter<Uint8List>(
-         stream.map(
-           (chunk) => chunk is Uint8List ? chunk : Uint8List.fromList(chunk),
-         ),
-       ),
-       _branch = null {
-    _branch = _splitter!.split();
-  }
-
-  BodyData._fromSplit(
-    StreamSplitter<Uint8List> splitter,
-    Stream<Uint8List> branch, {
-    this.defaultContentType,
-    this.defaultContentLength,
-  }) : _present = true,
-       _bytes = null,
-       _splitter = splitter,
-       _branch = branch;
-
-  factory BodyData.fromInit(Object? init) {
+  factory Body([BodyInit? init]) {
     return switch (init) {
-      null => BodyData.empty(),
-      final BodyData data => data.clone(),
-      final String text => BodyData.bytes(
-        utf8.encode(text),
-        defaultContentType: 'text/plain; charset=utf-8',
+      null => Body._(blockHost: block.Block(const [])),
+      final Body body => Body._(
+        blockHost: body._blockHost,
+        streamHost: body._streamHost,
       ),
-      final Uint8List bytes => BodyData.bytes(bytes),
-      final ByteBuffer buffer => BodyData.bytes(buffer.asUint8List()),
-      final List<int> bytes => BodyData.bytes(bytes),
-      // Keep Blob ahead of block.Block for explicit fetch-type handling.
-      final Blob blob => _fromBlock(blob),
-      final block.Block blockBody => _fromBlock(blockBody),
-      final URLSearchParams params => BodyData.bytes(
-        utf8.encode(params.toString()),
-        defaultContentType: 'application/x-www-form-urlencoded; charset=utf-8',
+      final String text => Body._(
+        blockHost: block.Block([text], type: 'text/plain;charset=utf-8'),
       ),
-      final FormData formData => _fromFormData(formData),
-      final Stream<List<int>> stream => BodyData.stream(stream),
+      final Uint8List bytes => Body._(blockHost: block.Block([bytes])),
+      final ByteBuffer buffer => Body._(
+        blockHost: block.Block([buffer.asUint8List()]),
+      ),
+      final List<int> bytes => Body._(
+        blockHost: block.Block([Uint8List.fromList(bytes)]),
+      ),
+      final Blob blob => Body._(blockHost: blob),
+      final block.Block blockHost => Body._(blockHost: blockHost),
+      final URLSearchParams params => Body._(
+        blockHost: block.Block([
+          params.toString(),
+        ], type: 'application/x-www-form-urlencoded;charset=utf-8'),
+      ),
+      final FormData formData => Body._(
+        streamHost: formData.encodeMultipart().stream,
+      ),
+      final Stream<List<int>> stream => Body._(
+        streamHost: stream.map(
+          (chunk) => chunk is Uint8List ? chunk : Uint8List.fromList(chunk),
+        ),
+      ),
       _ => throw ArgumentError.value(
         init,
         'init',
@@ -107,113 +81,108 @@ class BodyData {
     };
   }
 
-  static BodyData _fromBlock(block.Block value) {
-    return BodyData.stream(
-      value.stream(),
-      defaultContentType: value.type.isEmpty ? null : value.type,
-      defaultContentLength: value.size,
-    );
-  }
-
-  static BodyData _fromFormData(FormData formData) {
-    final payload = formData.encodeMultipart();
-    return BodyData.stream(
-      payload.stream,
-      defaultContentType: payload.contentType,
-      defaultContentLength: payload.contentLength,
-    );
-  }
-
-  final bool _present;
-  final Uint8List? _bytes;
-  final StreamSplitter<Uint8List>? _splitter;
-  Stream<Uint8List>? _branch;
-
+  final block.Block? _blockHost;
+  Stream<Uint8List>? _streamHost;
   bool _used = false;
 
-  /// Default content type inferred from body input.
-  final String? defaultContentType;
-
-  /// Default content length inferred from body input.
-  final int? defaultContentLength;
-
-  bool get hasBody => _present;
-
-  bool get isUsed => _used;
-
-  Stream<Uint8List>? consumeAsStream() {
-    if (!_present) {
-      return null;
+  Stream<Uint8List>? get stream async* {
+    final blockHost = _blockHost;
+    final streamHost = _streamHost;
+    if (blockHost == null && streamHost == null) {
+      return;
     }
 
-    return _consumeAsStream();
-  }
-
-  Future<Uint8List> consumeAsBytes() async {
     _startConsumption();
 
-    if (_bytes != null) {
-      return Uint8List.fromList(_bytes);
+    if (blockHost != null) {
+      yield* blockHost.stream();
+      return;
     }
 
-    if (_branch == null) {
-      return Uint8List(0);
+    if (streamHost != null) {
+      yield* streamHost;
     }
+  }
+
+  bool get bodyUsed => _used;
+
+  Future<Uint8List> bytes() async {
+    final stream = this.stream;
+    if (stream == null) return Uint8List(0);
 
     final builder = BytesBuilder(copy: false);
-    await for (final chunk in _branch!) {
+    await for (final chunk in stream) {
       builder.add(chunk);
     }
 
     return builder.takeBytes();
   }
 
-  Future<String> consumeAsText([Encoding encoding = utf8]) async {
-    return encoding.decode(await consumeAsBytes());
+  Future<String> text([Encoding encoding = utf8]) async {
+    return encoding.decode(await bytes());
   }
 
-  Future<T> consumeAsJson<T>() async {
-    final decoded = json.decode(await consumeAsText());
-    return decoded as T;
+  Future<T> json<T>() {
+    return text().then((text) => jsonDecode(text) as T);
   }
 
-  BodyData clone() {
+  Future<Blob> blob() async {
+    final blockHost = _blockHost;
+    if (blockHost != null) {
+      _startConsumption();
+      if (blockHost case final Blob blob) {
+        return blob;
+      }
+
+      return Blob(<Object>[blockHost], blockHost.type);
+    }
+
+    return Blob(<Object>[await bytes()]);
+  }
+
+  Body clone() {
     if (_used) {
       throw StateError('Body has already been consumed.');
     }
 
-    if (!_present) {
-      return BodyData.empty();
+    final blockHost = _blockHost;
+    if (blockHost != null) {
+      return Body._(blockHost: blockHost);
     }
 
-    if (_bytes != null) {
-      return BodyData.bytes(_bytes, defaultContentType: defaultContentType);
+    final streamHost = _streamHost;
+    if (streamHost != null) {
+      final (left, right) = streamTee(streamHost);
+      _streamHost = left;
+      return Body._(streamHost: right);
     }
 
-    final splitter = _splitter;
-    if (splitter == null) {
-      return BodyData.empty();
-    }
-
-    return BodyData._fromSplit(
-      splitter,
-      splitter.split(),
-      defaultContentType: defaultContentType,
-      defaultContentLength: defaultContentLength,
-    );
+    throw StateError('Body has no host.');
   }
 
-  Stream<Uint8List> _consumeAsStream() async* {
-    _startConsumption();
-
-    if (_bytes != null) {
-      yield Uint8List.fromList(_bytes);
-      return;
+  @override
+  StreamSubscription<Uint8List> listen(
+    void Function(Uint8List event)? onData, {
+    Function? onError,
+    void Function()? onDone,
+    bool? cancelOnError,
+  }) {
+    final stream = this.stream;
+    if (stream == null) {
+      return Stream<Uint8List>.empty().listen(
+        onData,
+        onError: onError,
+        onDone: onDone,
+        cancelOnError: cancelOnError,
+      );
     }
 
-    if (_branch != null) {
-      yield* _branch!;
-    }
+    return stream.listen(
+      onData,
+      onError: onError,
+      onDone: onDone,
+      cancelOnError: cancelOnError,
+    );
   }
 
   void _startConsumption() {
