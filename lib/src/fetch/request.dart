@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'body.dart';
+import 'blob.dart';
 import 'form_data.dart';
 import 'headers.dart';
 import 'url_search_params.dart';
@@ -15,13 +16,13 @@ class RequestInit {
 }
 
 /// Fetch-like HTTP request model.
-class Request with BodyMixin {
+class Request {
   Request(Uri url, [RequestInit? init])
     : this._create(
         url: url,
         method: init?.method ?? 'GET',
         headers: _headersFromInit(init?.headers),
-        bodyData: BodyData.fromInit(init?.body),
+        bodyData: Body(init?.body),
       );
 
   Request._create({
@@ -89,11 +90,22 @@ class Request with BodyMixin {
   /// Mutable request headers.
   final Headers headers;
 
-  @override
-  final BodyData bodyData;
+  final Body bodyData;
 
-  @override
-  String? get bodyMimeTypeHint => headers.get('content-type');
+  Stream<Uint8List>? get body => bodyData.hasBody ? bodyData.stream : null;
+  bool get bodyUsed => bodyData.bodyUsed;
+  Future<Uint8List> bytes() => bodyData.bytes();
+  Future<String> text([Encoding encoding = utf8]) => bodyData.text(encoding);
+  Future<T> json<T>() => bodyData.json<T>();
+  Future<Blob> blob() async {
+    final blob = await bodyData.blob();
+    final type = headers.get('content-type');
+    if (type == null || type.isEmpty || blob.type == type) {
+      return blob;
+    }
+
+    return Blob(<Object>[blob], type);
+  }
 
   Request clone() {
     return Request._internal(
@@ -114,7 +126,6 @@ class Request with BodyMixin {
 
   static Headers _headersFromInit(HeadersInit? init) {
     return switch (init) {
-      null => Headers(),
       final Headers headers => headers,
       _ => Headers(init),
     };
@@ -144,9 +155,7 @@ class Request with BodyMixin {
   }
 
   void _applyDefaultBodyHeaders() {
-    if (!bodyData.hasBody) {
-      return;
-    }
+    if (!bodyData.hasBody) return;
 
     final inferredType = bodyData.defaultContentType;
     if (inferredType != null && !headers.has('content-type')) {

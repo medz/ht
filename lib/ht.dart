@@ -1,11 +1,9 @@
-library;
-
 export 'src/core/http_method.dart';
 export 'src/core/http_status.dart';
 export 'src/core/http_version.dart';
 export 'src/core/mime_type.dart';
 
-export 'src/fetch/body.dart' show BodyInit, BodyMixin;
+export 'src/fetch/body.dart';
 export 'src/fetch/blob.dart';
 export 'src/fetch/file.dart';
 export 'src/fetch/form_data.dart';

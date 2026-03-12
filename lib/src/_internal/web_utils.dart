@@ -106,3 +106,16 @@ extension type URLSearchParams._(JSObject _) implements web.URLSearchParams {
   factory URLSearchParams.fromMap(Map<String, String> map) =>
       URLSearchParams.fromEntries(map.entries);
 }
+
+extension type FormData._(JSObject _) implements web.FormData {
+  external factory FormData([
+    web.HTMLFormElement form,
+    web.HTMLElement? submitter,
+  ]);
+
+  factory FormData.fromHost(web.FormData host) => FormData._(host);
+
+  external ArrayIterator entries();
+  external ArrayIterator keys();
+  external ArrayIterator values();
+}
