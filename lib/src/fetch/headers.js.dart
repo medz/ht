@@ -1,7 +1,7 @@
 import 'dart:js_interop';
 
+import '../_internal/web_utils.dart' as web;
 import 'headers.native.dart' as native;
-import 'web_utils.dart' as web;
 
 class Headers
     with Iterable<MapEntry<String, String>>
