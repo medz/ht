@@ -6,22 +6,22 @@ import 'body.dart';
 import 'file.dart';
 import 'url_search_params.dart';
 
-sealed class MultipartBody {
-  const MultipartBody();
+sealed class Multipart {
+  const Multipart();
 
-  const factory MultipartBody.text(String value) = TextMultipartBody;
-  factory MultipartBody.blob(Blob value, [String? filename]) =>
-      BlobMultipartBody(value, filename);
+  const factory Multipart.text(String value) = TextMultipart;
+  factory Multipart.blob(Blob value, [String? filename]) =>
+      BlobMultipart(value, filename);
 }
 
-final class TextMultipartBody extends MultipartBody {
-  const TextMultipartBody(this.value);
+final class TextMultipart extends Multipart {
+  const TextMultipart(this.value);
 
   final String value;
 }
 
-final class BlobMultipartBody extends File implements MultipartBody {
-  BlobMultipartBody(Blob value, [String? filename])
+final class BlobMultipart extends File implements Multipart {
+  BlobMultipart(Blob value, [String? filename])
     : filename = switch (value) {
         final File file => filename ?? file.name,
         _ => filename ?? 'blob',
@@ -38,7 +38,7 @@ final class BlobMultipartBody extends File implements MultipartBody {
   final String filename;
 }
 
-class FormData with Iterable<MapEntry<String, MultipartBody>> {
+class FormData with Iterable<MapEntry<String, Multipart>> {
   static Future<FormData> parse(Body body, {String? contentType}) async {
     final essence = _contentTypeEssence(contentType);
     return switch (essence) {
@@ -51,12 +51,12 @@ class FormData with Iterable<MapEntry<String, MultipartBody>> {
     };
   }
 
-  final _entries = <MapEntry<String, MultipartBody>>[];
+  final _entries = <MapEntry<String, Multipart>>[];
 
   @override
-  Iterator<MapEntry<String, MultipartBody>> get iterator => _entries.iterator;
+  Iterator<MapEntry<String, Multipart>> get iterator => _entries.iterator;
 
-  Iterable<MapEntry<String, MultipartBody>> entries() => this;
+  Iterable<MapEntry<String, Multipart>> entries() => this;
 
   Iterable<String> keys() sync* {
     for (final MapEntry(:key) in _entries) {
@@ -64,13 +64,13 @@ class FormData with Iterable<MapEntry<String, MultipartBody>> {
     }
   }
 
-  Iterable<MultipartBody> values() sync* {
+  Iterable<Multipart> values() sync* {
     for (final MapEntry(:value) in _entries) {
       yield value;
     }
   }
 
-  MultipartBody? get(String name) {
+  Multipart? get(String name) {
     for (final entry in _entries) {
       if (entry.key == name) {
         return entry.value;
@@ -80,23 +80,23 @@ class FormData with Iterable<MapEntry<String, MultipartBody>> {
     return null;
   }
 
-  List<MultipartBody> getAll(String name) {
-    return List<MultipartBody>.unmodifiable(
+  List<Multipart> getAll(String name) {
+    return List<Multipart>.unmodifiable(
       _entries.where((entry) => entry.key == name).map((entry) => entry.value),
     );
   }
 
   bool has(String name) => _entries.any((entry) => entry.key == name);
 
-  void append(String name, MultipartBody value) {
-    _entries.add(MapEntry<String, MultipartBody>(name, value));
+  void append(String name, Multipart value) {
+    _entries.add(MapEntry<String, Multipart>(name, value));
   }
 
   void delete(String name) {
     _entries.removeWhere((entry) => entry.key == name);
   }
 
-  void set(String name, MultipartBody value) {
+  void set(String name, Multipart value) {
     delete(name);
     append(name, value);
   }
@@ -105,7 +105,7 @@ class FormData with Iterable<MapEntry<String, MultipartBody>> {
     final params = URLSearchParams(await body.text());
     final formData = FormData();
     for (final MapEntry(:key, :value) in params.entries()) {
-      formData.append(key, MultipartBody.text(value));
+      formData.append(key, Multipart.text(value));
     }
     return formData;
   }
@@ -241,7 +241,7 @@ class FormData with Iterable<MapEntry<String, MultipartBody>> {
     return name;
   }
 
-  static MultipartBody _partBodyFromHeaders(
+  static Multipart _partBodyFromHeaders(
     Map<String, String> headers,
     Uint8List bytes,
   ) {
@@ -255,13 +255,13 @@ class FormData with Iterable<MapEntry<String, MultipartBody>> {
     final parameters = _parseHeaderParameters(disposition);
     final filename = parameters['filename'];
     if (filename != null) {
-      return MultipartBody.blob(
+      return Multipart.blob(
         Blob(<BlobPart>[bytes], headers['content-type'] ?? ''),
         filename,
       );
     }
 
-    return MultipartBody.text(utf8.decode(bytes));
+    return Multipart.text(utf8.decode(bytes));
   }
 
   static Map<String, String> _parseHeaderParameters(String value) {

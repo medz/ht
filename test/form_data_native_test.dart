@@ -12,13 +12,13 @@ void main() {
         contentType: 'application/x-www-form-urlencoded',
       );
 
-      expect(formData.get('a'), isA<TextMultipartBody>());
-      expect((formData.get('a')! as TextMultipartBody).value, '1');
+      expect(formData.get('a'), isA<TextMultipart>());
+      expect((formData.get('a')! as TextMultipart).value, '1');
       expect(
-        formData.getAll('a').map((value) => (value as TextMultipartBody).value),
+        formData.getAll('a').map((value) => (value as TextMultipart).value),
         ['1', '2'],
       );
-      expect((formData.get('hello')! as TextMultipartBody).value, 'world x');
+      expect((formData.get('hello')! as TextMultipart).value, 'world x');
     });
 
     test(
@@ -29,7 +29,7 @@ void main() {
           contentType: 'application/x-www-form-urlencoded; charset=utf-8',
         );
 
-        expect((formData.get('name')! as TextMultipartBody).value, 'seven du');
+      expect((formData.get('name')! as TextMultipart).value, 'seven du');
       },
     );
 
@@ -46,13 +46,13 @@ void main() {
         contentType: encoded.contentType,
       );
 
-      expect(formData.get('a'), isA<TextMultipartBody>());
-      expect((formData.get('a')! as TextMultipartBody).value, '1');
+      expect(formData.get('a'), isA<TextMultipart>());
+      expect((formData.get('a')! as TextMultipart).value, '1');
       expect(
-        formData.getAll('a').map((value) => (value as TextMultipartBody).value),
+        formData.getAll('a').map((value) => (value as TextMultipart).value),
         ['1', '2'],
       );
-      expect((formData.get('hello')! as TextMultipartBody).value, 'world');
+      expect((formData.get('hello')! as TextMultipart).value, 'world');
     });
 
     test('parses multipart/form-data blob entries', () async {
@@ -71,11 +71,11 @@ void main() {
         contentType: encoded.contentType,
       );
 
-      expect((formData.get('title')! as TextMultipartBody).value, 'avatar');
+      expect((formData.get('title')! as TextMultipart).value, 'avatar');
 
       final file = formData.get('file');
-      expect(file, isA<BlobMultipartBody>());
-      final blob = file! as BlobMultipartBody;
+      expect(file, isA<BlobMultipart>());
+      final blob = file! as BlobMultipart;
       expect(blob.filename, 'a.txt');
       expect(blob.type, 'text/plain;charset=utf-8');
       expect(await blob.text(), 'binary');
