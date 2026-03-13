@@ -19,9 +19,10 @@ void main() {
       final leftFuture = left.toList();
       final rightFuture = right.toList();
 
-      controller.add(1);
-      controller.add(2);
-      controller.add(3);
+      controller
+        ..add(1)
+        ..add(2)
+        ..add(3);
       await controller.close();
 
       expect(await leftFuture, [1, 2, 3]);

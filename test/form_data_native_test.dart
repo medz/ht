@@ -2,7 +2,6 @@ import 'dart:typed_data';
 
 import 'package:ht/src/fetch/body.dart';
 import 'package:ht/src/fetch/blob.dart';
-import 'package:ht/src/fetch/form_data.dart' as legacy;
 import 'package:ht/src/fetch/form_data.native.dart';
 import 'package:ht/src/fetch/headers.dart';
 import 'package:test/test.dart';
@@ -38,10 +37,10 @@ void main() {
 
     test('parses multipart/form-data text entries', () async {
       final encoded =
-          (legacy.FormData()
-                ..append('a', '1')
-                ..append('a', '2')
-                ..append('hello', 'world'))
+          (FormData()
+                ..append('a', Multipart.text('1'))
+                ..append('a', Multipart.text('2'))
+                ..append('hello', Multipart.text('world')))
               .encodeMultipart(boundary: 'test-boundary');
 
       final formData = await FormData.parse(
@@ -60,12 +59,14 @@ void main() {
 
     test('parses multipart/form-data blob entries', () async {
       final encoded =
-          (legacy.FormData()
-                ..append('title', 'avatar')
+          (FormData()
+                ..append('title', Multipart.text('avatar'))
                 ..append(
                   'file',
-                  Blob(<BlobPart>['binary'], 'text/plain;charset=utf-8'),
-                  filename: 'a.txt',
+                  Multipart.blob(
+                    Blob(<BlobPart>['binary'], 'text/plain;charset=utf-8'),
+                    'a.txt',
+                  ),
                 ))
               .encodeMultipart(boundary: 'blob-boundary');
 
