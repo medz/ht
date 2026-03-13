@@ -6,6 +6,7 @@ import 'dart:typed_data';
 
 import 'package:web/web.dart' as web;
 
+import '../_internal/web_fetch_utils.dart' as web_fetch;
 import '../_internal/web_stream_bridge.dart';
 import '../core/http_method.dart';
 import 'body.dart';
@@ -92,8 +93,9 @@ class Request implements native.Request {
   @override
   native.RequestCredentials get credentials {
     return switch (_host) {
-      final WebRequestHost host =>
-        _requestCredentialsFromValue(host.value.credentials),
+      final WebRequestHost host => _requestCredentialsFromValue(
+        host.value.credentials,
+      ),
       final NativeRequestHost host => host.value.credentials,
     };
   }
@@ -157,7 +159,9 @@ class Request implements native.Request {
   @override
   native.RequestRedirect get redirect {
     return switch (_host) {
-      final WebRequestHost host => _requestRedirectFromValue(host.value.redirect),
+      final WebRequestHost host => _requestRedirectFromValue(
+        host.value.redirect,
+      ),
       final NativeRequestHost host => host.value.redirect,
     };
   }
@@ -173,8 +177,9 @@ class Request implements native.Request {
   @override
   native.RequestReferrerPolicy? get referrerPolicy {
     return switch (_host) {
-      final WebRequestHost host =>
-        _requestReferrerPolicyFromValue(host.value.referrerPolicy),
+      final WebRequestHost host => _requestReferrerPolicyFromValue(
+        host.value.referrerPolicy,
+      ),
       final NativeRequestHost host => host.value.referrerPolicy,
     };
   }
@@ -192,9 +197,15 @@ class Request implements native.Request {
 
   @override
   Future<Blob> blob() async {
-    final blob = switch (body) {
-      final Body body => await body.blob(),
-      null => Blob(),
+    final blob = await switch (_host) {
+      final WebRequestHost host => web_fetch.blobFromWebPromise(
+        host.value.blob(),
+        type: headers.get('content-type'),
+      ),
+      _ => switch (body) {
+        final Body body => body.blob(),
+        null => Future<Blob>.value(Blob()),
+      },
     };
 
     final type = headers.get('content-type');
@@ -207,22 +218,32 @@ class Request implements native.Request {
 
   @override
   Future<Uint8List> bytes() {
-    return switch (body) {
-      final Body body => body.bytes(),
-      null => Future<Uint8List>.value(Uint8List(0)),
+    return switch (_host) {
+      final WebRequestHost host => web_fetch.bytesFromWebPromise(
+        host.value.bytes(),
+      ),
+      _ => switch (body) {
+        final Body body => body.bytes(),
+        null => Future<Uint8List>.value(Uint8List(0)),
+      },
     };
   }
 
   @override
   Future<FormData> formData() {
-    return switch (body) {
-      final Body body => FormData.parse(
-        body,
-        contentType: headers.get('content-type'),
+    return switch (_host) {
+      final WebRequestHost host => host.value.formData().toDart.then(
+        web_fetch.formDataFromWebHost,
       ),
-      null => Future<FormData>.error(
-        const FormatException('Cannot decode form data from an empty body.'),
-      ),
+      _ => switch (body) {
+        final Body body => FormData.parse(
+          body,
+          contentType: headers.get('content-type'),
+        ),
+        null => Future<FormData>.error(
+          const FormatException('Cannot decode form data from an empty body.'),
+        ),
+      },
     };
   }
 
@@ -238,9 +259,14 @@ class Request implements native.Request {
 
   @override
   Future<String> text() {
-    return switch (body) {
-      final Body body => body.text(),
-      null => Future<String>.value(''),
+    return switch (_host) {
+      final WebRequestHost host => web_fetch.textFromWebPromise(
+        host.value.text(),
+      ),
+      _ => switch (body) {
+        final Body body => body.text(),
+        null => Future<String>.value(''),
+      },
     };
   }
 
@@ -258,7 +284,10 @@ class Request implements native.Request {
   ) {
     return switch (input) {
       final native.Request request => request,
-      final native.RequestInput requestInput => native.Request(requestInput, init),
+      final native.RequestInput requestInput => native.Request(
+        requestInput,
+        init,
+      ),
       final String url => native.Request(native.RequestInput.string(url), init),
       final Uri url => native.Request(native.RequestInput.uri(url), init),
       final web.Request request => _nativeRequestFromWebRequest(request, init),
