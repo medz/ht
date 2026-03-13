@@ -8,6 +8,6 @@ export 'src/fetch/blob.dart';
 export 'src/fetch/file.dart';
 export 'src/fetch/form_data.native.dart';
 export 'src/fetch/headers.dart';
-export 'src/fetch/request.native.dart';
+export 'src/fetch/request.dart';
 export 'src/fetch/response.native.dart';
 export 'src/fetch/url_search_params.dart';
