@@ -1,10 +1,13 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:block/block.dart' as block;
 import 'package:ht/src/fetch/body.dart';
 import 'package:ht/src/fetch/url_search_params.dart';
 import 'package:test/test.dart';
+
+Stream<Uint8List> expectNonNullableStream(Stream<Uint8List> stream) => stream;
 
 void main() {
   group('Body', () {
@@ -89,10 +92,16 @@ void main() {
       'empty bodies return empty bytes and become used when consumed',
       () async {
         final body = Body();
+        final stream = expectNonNullableStream(body.stream);
 
         expect(body.bodyUsed, isFalse);
-        expect(await body.bytes(), isEmpty);
+        expect(await stream.toList(), isEmpty);
         expect(body.bodyUsed, isTrue);
+
+        final bytesBody = Body();
+        expect(bytesBody.bodyUsed, isFalse);
+        expect(await bytesBody.bytes(), isEmpty);
+        expect(bytesBody.bodyUsed, isTrue);
       },
     );
 
