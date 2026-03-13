@@ -44,10 +44,7 @@ class Body extends Stream<Uint8List> {
   factory Body([BodyInit? init]) {
     return switch (init) {
       null => Body._(blockHost: block.Block(const [])),
-      final Body body => Body._(
-        blockHost: body._blockHost,
-        streamHost: body._streamHost,
-      ),
+      final Body body => body.clone(),
       final String text => Body._(
         blockHost: block.Block([text], type: 'text/plain;charset=utf-8'),
       ),
