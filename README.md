@@ -27,7 +27,7 @@ dependencies:
 | Category | Types |
 | --- | --- |
 | Protocol | `HttpMethod`, `HttpStatus`, `HttpVersion`, `MimeType` |
-| Message | `Request`, `RequestInit`, `Response`, `ResponseInit`, `BodyMixin`, `BodyInit` |
+| Message | `Request`, `RequestInit`, `Response`, `ResponseInit`, `Body`, `BodyInit` |
 | Header/URL | `Headers`, `URLSearchParams` |
 | Binary/Form | `Blob`, `File`, `FormData` |
 
@@ -37,9 +37,13 @@ dependencies:
 import 'package:ht/ht.dart';
 
 Future<void> main() async {
-  final request = Request.json(
-    Uri.parse('https://api.example.com/tasks'),
-    {'title': 'rewrite ht'},
+  final request = Request(
+    RequestInput.uri(Uri.parse('https://api.example.com/tasks')),
+    RequestInit(
+      method: HttpMethod.post,
+      headers: Headers({'content-type': 'application/json; charset=utf-8'}),
+      body: '{"title":"rewrite ht"}',
+    ),
   );
 
   final response = Response.json(
@@ -68,8 +72,14 @@ import 'package:ht/ht.dart';
 
 Future<void> main() async {
   final form = FormData()
-    ..append('name', 'alice')
-    ..append('avatar', Blob.text('binary'), filename: 'avatar.txt');
+    ..append('name', Multipart.text('alice'))
+    ..append(
+      'avatar',
+      Multipart.blob(
+        Blob(<Object>['binary'], 'text/plain;charset=utf-8'),
+        'avatar.txt',
+      ),
+    );
 
   final multipart = form.encodeMultipart();
   final bytes = await multipart.bytes();
@@ -92,12 +102,10 @@ import 'package:ht/ht.dart';
 Future<void> main() async {
   final body = block.Block(<Object>['hello'], type: 'text/plain');
   final request = Request(
-    Uri.parse('https://example.com'),
-    RequestInit(method: 'POST', body: body),
+    RequestInput.uri(Uri.parse('https://example.com')),
+    RequestInit(method: HttpMethod.post, body: body),
   );
 
-  print(request.headers.get('content-type'));   // text/plain
-  print(request.headers.get('content-length')); // 5
   print(await request.text());                  // hello
 }
 ```
@@ -108,7 +116,7 @@ Future<void> main() async {
 interpreted from the end of the blob:
 
 ```dart
-final blob = Blob.text('hello world');
+final blob = Blob(<Object>['hello world'], 'text/plain;charset=utf-8');
 final tail = blob.slice(-5);
 print(await tail.text()); // world
 ```
