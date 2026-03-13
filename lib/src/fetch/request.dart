@@ -12,5 +12,6 @@ export 'request.native.dart'
         RequestReferrerPolicy,
         RequestDuplex;
 export 'request.native.dart'
+    if (dart.library.js_interop) 'request.js.dart'
     if (dart.library.io) 'request.io.dart'
     show Request;
