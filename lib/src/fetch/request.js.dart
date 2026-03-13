@@ -34,7 +34,11 @@ class Request implements native.Request {
 
   factory Request(Object? input, [native.RequestInit? init]) {
     return Request._(switch ((input, init)) {
+      (final Request request, null) => request.clone()._host,
       (final web.Request request, null) => WebRequestHost(request),
+      (final native.Request request, null) => NativeRequestHost(
+        request.clone(),
+      ),
       _ => NativeRequestHost(_toNativeRequest(input, init)),
     });
   }
@@ -279,13 +283,38 @@ class Request implements native.Request {
     native.RequestInit? init,
   ) {
     return switch (input) {
-      final Request request => native.Request(request.clone(), init),
+      final Request request => _nativeRequestFromWrappedRequest(request, init),
       final native.Request request => native.Request(request, init),
       final String _ => native.Request(input, init),
       final Uri _ => native.Request(input, init),
       final web.Request request => _nativeRequestFromWebRequest(request, init),
       _ => throw ArgumentError.value(input, 'input'),
     };
+  }
+
+  static native.Request _nativeRequestFromWrappedRequest(
+    Request request,
+    native.RequestInit? init,
+  ) {
+    final body = init?.body == null ? request.body : null;
+
+    return native.Request(
+      request.url,
+      native.RequestInit(
+        method: init?.method ?? request.method,
+        headers: init?.headers ?? js_headers.Headers(request.headers),
+        body: init?.body ?? body?.clone(),
+        referrer: init?.referrer ?? request.referrer,
+        referrerPolicy: init?.referrerPolicy ?? request.referrerPolicy,
+        mode: init?.mode ?? request.mode,
+        credentials: init?.credentials ?? request.credentials,
+        cache: init?.cache ?? request.cache,
+        redirect: init?.redirect ?? request.redirect,
+        integrity: init?.integrity ?? request.integrity,
+        keepalive: init?.keepalive ?? request.keepalive,
+        duplex: init?.duplex ?? request.duplex,
+      ),
+    );
   }
 
   static native.Request _nativeRequestFromWebRequest(

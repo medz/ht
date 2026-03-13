@@ -96,6 +96,33 @@ void main() {
       expect(clone.bodyUsed, isTrue);
     });
 
+    test(
+      'rebuilds consumed wrapped requests when init provides a replacement body',
+      () async {
+        final upstream = Request(
+          web.Request(
+            'https://example.com/base'.toJS,
+            web.RequestInit(method: 'POST', body: 'payload'.toJS),
+          ),
+        );
+
+        expect(await upstream.text(), 'payload');
+        expect(upstream.bodyUsed, isTrue);
+
+        final rebuilt = Request(
+          upstream,
+          native.RequestInit(body: 'replacement', headers: {'x-override': '2'}),
+        );
+
+        expect(rebuilt.url, 'https://example.com/base');
+        expect(rebuilt.method, HttpMethod.post);
+        expect(rebuilt.headers.get('x-override'), '2');
+        expect(rebuilt.bodyUsed, isFalse);
+        expect(await rebuilt.text(), 'replacement');
+        expect(rebuilt.bodyUsed, isTrue);
+      },
+    );
+
     test('clone tees a wrapped web.Request body', () async {
       final upstream = web.Request(
         'https://example.com/clone'.toJS,

@@ -89,6 +89,38 @@ void main() {
       await clientResponse.drain<void>();
     });
 
+    test(
+      'rebuilds consumed wrapped requests when init provides a replacement body',
+      () async {
+        final upstream = io_request.Request(
+          native.Request(
+            'https://example.com/base',
+            native.RequestInit(
+              method: HttpMethod.post,
+              headers: {'x-upstream': '1'},
+              body: 'payload',
+            ),
+          ),
+        );
+
+        expect(await upstream.text(), 'payload');
+        expect(upstream.bodyUsed, isTrue);
+
+        final rebuilt = io_request.Request(
+          upstream,
+          native.RequestInit(body: 'replacement', headers: {'x-override': '2'}),
+        );
+
+        expect(rebuilt.url, 'https://example.com/base');
+        expect(rebuilt.method, HttpMethod.post);
+        expect(rebuilt.headers.get('x-upstream'), isNull);
+        expect(rebuilt.headers.get('x-override'), '2');
+        expect(rebuilt.bodyUsed, isFalse);
+        expect(await rebuilt.text(), 'replacement');
+        expect(rebuilt.bodyUsed, isTrue);
+      },
+    );
+
     test('wraps HttpRequest without copying headers or body eagerly', () async {
       final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
       addTearDown(server.close);
