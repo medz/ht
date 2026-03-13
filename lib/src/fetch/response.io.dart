@@ -188,16 +188,18 @@ class Response implements native.Response {
 
   @override
   Response clone() {
-    final body = this.body;
-    return Response(
-      native.Response(
-        body?.clone(),
-        native.ResponseInit(
-          status: status,
-          statusText: statusText,
-          headers: io_headers.Headers(headers),
+    return switch (_host) {
+      final NativeResponseHost host => Response(host.value.clone()),
+      final HttpClientResponseHost _ => Response(
+        native.Response(
+          body?.clone(),
+          native.ResponseInit(
+            status: status,
+            statusText: statusText,
+            headers: io_headers.Headers(headers),
+          ),
         ),
       ),
-    );
+    };
   }
 }
