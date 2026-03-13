@@ -92,9 +92,9 @@ void main() {
         web.Response(
           'a=1'.toJS,
           web.ResponseInit(
-            headers: {
-              'content-type': 'application/x-www-form-urlencoded',
-            }.jsify()! as web.HeadersInit,
+            headers:
+                {'content-type': 'application/x-www-form-urlencoded'}.jsify()!
+                    as web.HeadersInit,
           ),
         ),
       );

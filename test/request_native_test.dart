@@ -124,27 +124,30 @@ void main() {
       expect(await blob.text(), 'hello');
     });
 
-    test('formData parses application/x-www-form-urlencoded request bodies', () async {
-      final request = Request(
-        RequestInput.string('https://example.com/form'),
-        RequestInit(
-          method: HttpMethod.post,
-          headers: Headers({
-            'content-type': 'application/x-www-form-urlencoded;charset=utf-8',
-          }),
-          body: 'a=1&a=2&hello=world+x',
-        ),
-      );
+    test(
+      'formData parses application/x-www-form-urlencoded request bodies',
+      () async {
+        final request = Request(
+          RequestInput.string('https://example.com/form'),
+          RequestInit(
+            method: HttpMethod.post,
+            headers: Headers({
+              'content-type': 'application/x-www-form-urlencoded;charset=utf-8',
+            }),
+            body: 'a=1&a=2&hello=world+x',
+          ),
+        );
 
-      final formData = await request.formData();
+        final formData = await request.formData();
 
-      expect((formData.get('a')! as TextMultipart).value, '1');
-      expect(
-        formData.getAll('a').map((value) => (value as TextMultipart).value),
-        ['1', '2'],
-      );
-      expect((formData.get('hello')! as TextMultipart).value, 'world x');
-    });
+        expect((formData.get('a')! as TextMultipart).value, '1');
+        expect(
+          formData.getAll('a').map((value) => (value as TextMultipart).value),
+          ['1', '2'],
+        );
+        expect((formData.get('hello')! as TextMultipart).value, 'world x');
+      },
+    );
 
     test('formData parses multipart request bodies', () async {
       final encoded =

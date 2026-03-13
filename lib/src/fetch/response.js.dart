@@ -181,10 +181,9 @@ class Response implements native.Response {
   @override
   Future<FormData> formData() {
     return switch (_host) {
-      final WebResponseHost host => host.value
-          .formData()
-          .toDart
-          .then(web_fetch.formDataFromWebHost),
+      final WebResponseHost host => host.value.formData().toDart.then(
+        web_fetch.formDataFromWebHost,
+      ),
       _ => switch (body) {
         final Body body => FormData.parse(
           body,

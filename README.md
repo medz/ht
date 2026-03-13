@@ -9,13 +9,6 @@
 
 This package focuses on the **type and semantics layer** only. It does not implement an HTTP client or server runtime.
 
-## Features
-
-- Fetch-style primitives: `Request`, `RequestInit`, `Response`, `ResponseInit`, `Headers`, `URLSearchParams`, `Blob`, `File`, `FormData`
-- Protocol helpers: `HttpMethod`, `HttpStatus`, `HttpVersion`, `MimeType`
-- Consistent body-read semantics (single-consume), clone semantics, and header normalization
-- Designed as a shared HTTP type layer for downstream client/server frameworks
-
 ## Installation
 
 ```bash
@@ -29,15 +22,7 @@ dependencies:
   ht: ^0.2.0
 ```
 
-## Scope
-
-- No HTTP client implementation
-- No HTTP server implementation
-- No routing or middleware framework
-
-The goal is to provide stable and reusable HTTP types and behavior contracts.
-
-## Core API
+## APIs
 
 | Category | Types |
 | --- | --- |

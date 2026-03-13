@@ -57,10 +57,7 @@ void main() {
       await file.writeAsString('hello');
 
       final blob = io_blob.Blob([file], 'text/plain');
-      final chunks = await blob
-          .stream(chunkSize: 2)
-          .map(utf8.decode)
-          .toList();
+      final chunks = await blob.stream(chunkSize: 2).map(utf8.decode).toList();
 
       expect(chunks, ['he', 'll', 'o']);
     });

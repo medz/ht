@@ -67,13 +67,16 @@ void main() {
       expect(body.bodyUsed, isTrue);
     });
 
-    test('empty bodies return empty bytes and become used when consumed', () async {
-      final body = Body();
+    test(
+      'empty bodies return empty bytes and become used when consumed',
+      () async {
+        final body = Body();
 
-      expect(body.bodyUsed, isFalse);
-      expect(await body.bytes(), isEmpty);
-      expect(body.bodyUsed, isTrue);
-    });
+        expect(body.bodyUsed, isFalse);
+        expect(await body.bytes(), isEmpty);
+        expect(body.bodyUsed, isTrue);
+      },
+    );
 
     test('consumption is single-use', () async {
       final body = Body('once');
