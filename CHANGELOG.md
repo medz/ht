@@ -1,5 +1,15 @@
 ## Next
 
+## 0.3.1
+
+- Fixed the broken `Request` constructor implementation shipped in `0.3.0`,
+  restoring Fetch-style construction for native, `dart:io`, and js runtimes.
+- Fixed wrapped-request rebuilds so `Request(existing, RequestInit(body: ...))`
+  replaces the body without incorrectly depending on cloning the consumed
+  upstream request body.
+- Added regression coverage for native, `dart:io`, and js `Request`
+  constructor/body override semantics.
+
 ## 0.3.0
 
 - BREAKING: Aligned `Request` and `Response` constructor/factory parameter
