@@ -3,10 +3,19 @@ import 'dart:convert';
 import 'package:ht/ht.dart';
 
 Future<void> main() async {
-  final request = Request.json(Uri.parse('https://api.example.com/tasks'), {
-    'title': 'Ship ht',
-    'priority': 'high',
-  });
+  final request = Request(
+    RequestInput.uri(Uri.parse('https://api.example.com/tasks')),
+    RequestInit(
+      method: HttpMethod.post,
+      headers: Headers({
+        'content-type': 'application/json; charset=utf-8',
+      }),
+      body: jsonEncode({
+        'title': 'Ship ht',
+        'priority': 'high',
+      }),
+    ),
+  );
 
   print('Request: ${request.method} ${request.url}');
   print('Request content-type: ${request.headers.get('content-type')}');

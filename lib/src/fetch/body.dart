@@ -6,7 +6,7 @@ import 'package:block/block.dart' as block;
 
 import '../_internal/stream_tee.dart';
 import 'blob.dart';
-import 'form_data.dart';
+import 'form_data.native.dart';
 import 'url_search_params.dart';
 
 /// Constructor input accepted by body implementations.

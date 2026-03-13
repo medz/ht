@@ -401,7 +401,9 @@ class FormData with Iterable<MapEntry<String, Multipart>> {
             'filename="${_escapeHeaderValue(blob.filename)}"\r\n',
           );
 
-          final type = blob.type.isEmpty ? 'application/octet-stream' : blob.type;
+          final type = blob.type.isEmpty
+              ? 'application/octet-stream'
+              : blob.type;
           yield _utf8('Content-Type: $type\r\n\r\n');
           yield* blob.stream();
           yield _utf8('\r\n');
@@ -435,7 +437,9 @@ class FormData with Iterable<MapEntry<String, Multipart>> {
             'filename="${_escapeHeaderValue(blob.filename)}"\r\n',
           );
 
-          final type = blob.type.isEmpty ? 'application/octet-stream' : blob.type;
+          final type = blob.type.isEmpty
+              ? 'application/octet-stream'
+              : blob.type;
           total += _utf8Length('Content-Type: $type\r\n\r\n');
           total += blob.size;
           total += _utf8Length('\r\n');
