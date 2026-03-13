@@ -1,9 +1,34 @@
 ## Next
 
+## 0.3.0
+
 - BREAKING: Aligned `Request` and `Response` constructor/factory parameter
   semantics with Fetch/Web by introducing `RequestInit` and `ResponseInit`.
 - BREAKING: Reworked request/response convenience constructors to use
   web-aligned positional body/init argument order.
+- BREAKING: `Request` now uses `RequestInput` for string/`Uri`/`Request`
+  construction, and request metadata now follows Fetch-style inheritance and
+  override rules.
+- BREAKING: `BodyMixin` was replaced by a first-class `Body` type, and
+  `Request.body` / `Response.body` now expose `Body?`.
+- BREAKING: `Headers`, `Blob`, `Request`, `Response`, and `URLSearchParams`
+  now resolve through platform-specific native/io/js implementations.
+- BREAKING: Removed older copy-first request/response convenience APIs that no
+  longer matched Fetch/Web semantics.
+- Added runtime-backed host adapters for:
+  - `Request` on js and `dart:io`
+  - `Response` on js and `dart:io`
+  - `Headers` on js and `dart:io`
+  - `Blob` on js and `dart:io`
+  - `URLSearchParams` on js
+- Added native `FormData` parsing for
+  `application/x-www-form-urlencoded` and `multipart/form-data`.
+- Added native `FormData.encodeMultipart()` returning `EncodedFormData`, with
+  stream, content type, content length, and header application helpers.
+- Added stream tee and web stream bridge internals to support cloning and host
+  interop without eager body materialization.
+- Added browser and `dart:io` coverage for host-backed fetch behavior and
+  multipart parsing edge cases.
 
 ## 0.2.0
 
