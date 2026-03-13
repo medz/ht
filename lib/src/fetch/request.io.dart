@@ -26,14 +26,10 @@ class Request implements native.Request {
   Request._(this._host);
 
   factory Request(Object? input, [native.RequestInit? init]) {
-    final host = switch ((input, init)) {
-      (final Request request, null) => request._host,
+    return Request._(switch ((input, init)) {
       (final io.HttpRequest request, null) => HttpRequestHost(request),
-      (final native.Request request, null) => NativeRequestHost(request),
       _ => NativeRequestHost(_toNativeRequest(input, init)),
-    };
-
-    return Request._(host);
+    });
   }
 
   final RequestHost _host;
@@ -255,7 +251,7 @@ class Request implements native.Request {
     native.RequestInit? init,
   ) {
     return switch (input) {
-      final native.Request request when init == null => request,
+      final Request request => native.Request(request.clone(), init),
       final native.Request request => native.Request(request, init),
       final String value => native.Request(value, init),
       final Uri value => native.Request(value, init),

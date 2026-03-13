@@ -130,7 +130,7 @@ class RequestInit {
 /// Native request contract shell aligned with the MDN `Request` surface.
 class Request {
   Request(Object? input, [RequestInit? init])
-    : this._(_coerceInput(input), init);
+    : this._(_coerceInput(_requireInput(input)), init);
 
   Request._(_RequestInput input, [RequestInit? init])
     : headers = _headersFromInput(input, init?.headers),
@@ -367,7 +367,7 @@ class Request {
     };
   }
 
-  static _RequestInput _coerceInput(Object? input) {
+  static _RequestInput _coerceInput(Object input) {
     return switch (input) {
       final Request value => _RequestRequestInput(value),
       final String value => _StringRequestInput(value),
@@ -378,5 +378,17 @@ class Request {
         'Unsupported request input: ${input.runtimeType}',
       ),
     };
+  }
+
+  static Object _requireInput(Object? input) {
+    if (input == null) {
+      throw ArgumentError.value(
+        input,
+        'input',
+        'Unsupported request input: ${input.runtimeType}',
+      );
+    }
+
+    return input;
   }
 }

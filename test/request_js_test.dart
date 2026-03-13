@@ -78,6 +78,24 @@ void main() {
       expect(await request.text(), 'payload');
     });
 
+    test('clones wrapped requests without init by teeing the body', () async {
+      final upstream = Request(
+        web.Request(
+          'https://example.com/upstream-clone'.toJS,
+          web.RequestInit(method: 'POST', body: 'cloned body'.toJS),
+        ),
+      );
+      final clone = Request(upstream);
+
+      expect(upstream.bodyUsed, isFalse);
+      expect(clone.bodyUsed, isFalse);
+      expect(await upstream.text(), 'cloned body');
+      expect(upstream.bodyUsed, isTrue);
+      expect(clone.bodyUsed, isFalse);
+      expect(await clone.text(), 'cloned body');
+      expect(clone.bodyUsed, isTrue);
+    });
+
     test('clone tees a wrapped web.Request body', () async {
       final upstream = web.Request(
         'https://example.com/clone'.toJS,
