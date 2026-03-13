@@ -6,6 +6,17 @@ import 'package:test/test.dart';
 
 void main() {
   group('Response (io)', () {
+    test('preserves native error clone semantics', () {
+      final response = Response(native.Response.error());
+
+      expect(() => response.clone(), returnsNormally);
+
+      final clone = response.clone();
+      expect(clone.type, native.ResponseType.error);
+      expect(clone.status, 0);
+      expect(clone.ok, isFalse);
+    });
+
     test(
       'wraps HttpClientResponse without copying headers or body eagerly',
       () async {

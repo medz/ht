@@ -19,6 +19,17 @@ void main() {
       expect(await response.text(), '');
     });
 
+    test('clone preserves error responses', () {
+      final response = Response.error();
+
+      expect(() => response.clone(), returnsNormally);
+
+      final clone = response.clone();
+      expect(clone.type, ResponseType.error);
+      expect(clone.status, 0);
+      expect(clone.ok, isFalse);
+    });
+
     test('defaults metadata for empty responses', () async {
       final response = Response();
 

@@ -160,13 +160,15 @@ class Response {
   }
 
   Response clone() {
-    return Response(
-      body?.clone(),
-      ResponseInit(
-        status: status,
-        statusText: statusText,
-        headers: Headers(headers),
-      ),
+    return Response._internal(
+      body: body?.clone(),
+      headers: Headers(headers),
+      ok: ok,
+      redirected: redirected,
+      status: status,
+      statusText: statusText,
+      type: type,
+      url: url,
     );
   }
 
