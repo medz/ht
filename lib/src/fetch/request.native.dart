@@ -129,7 +129,8 @@ class RequestInit {
 
 /// Native request contract shell aligned with the MDN `Request` surface.
 class Request {
-  Request(Object? input, [RequestInit? init]) : this._(_coerceInput(input), init);
+  Request(Object? input, [RequestInit? init])
+    : this._(_coerceInput(input), init);
 
   Request._(_RequestInput input, [RequestInit? init])
     : headers = _headersFromInput(input, init?.headers),
