@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:block/block.dart' as block;
@@ -51,6 +52,23 @@ void main() {
 
       expect(await body.text(), 'hello world');
       expect(await clone.text(), 'hello world');
+    });
+
+    test('copying a stream-backed body preserves independent reads', () async {
+      final controller = StreamController<List<int>>();
+      scheduleMicrotask(() async {
+        controller
+          ..add(utf8.encode('hello '))
+          ..add(utf8.encode('copy'));
+        await controller.close();
+      });
+
+      final body = Body(controller.stream);
+
+      final copy = Body(body);
+
+      expect(await body.text(), 'hello copy');
+      expect(await copy.text(), 'hello copy');
     });
 
     test('blob consumes stream bodies and returns a Blob view', () async {
