@@ -4,7 +4,7 @@ import 'package:ht/ht.dart';
 
 Future<void> main() async {
   final request = Request(
-    RequestInput.uri(Uri.parse('https://api.example.com/tasks')),
+    Uri.parse('https://api.example.com/tasks'),
     RequestInit(
       method: HttpMethod.post,
       headers: Headers({'content-type': 'application/json; charset=utf-8'}),

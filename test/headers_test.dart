@@ -1,3 +1,6 @@
+@TestOn('vm')
+library;
+
 import 'package:ht/ht.dart';
 import 'package:test/test.dart';
 

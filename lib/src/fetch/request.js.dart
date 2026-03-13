@@ -33,14 +33,14 @@ class Request implements native.Request {
   Request._(this._host);
 
   factory Request(Object? input, [native.RequestInit? init]) {
-    final host = switch ((input, init)) {
-      (final Request request, _) => request._host,
+    return Request._(switch ((input, init)) {
+      (final Request request, null) => request.clone()._host,
       (final web.Request request, null) => WebRequestHost(request),
-      (final native.Request request, _) => NativeRequestHost(request),
+      (final native.Request request, null) => NativeRequestHost(
+        request.clone(),
+      ),
       _ => NativeRequestHost(_toNativeRequest(input, init)),
-    };
-
-    return Request._(host);
+    });
   }
 
   final RequestHost _host;
@@ -283,16 +283,38 @@ class Request implements native.Request {
     native.RequestInit? init,
   ) {
     return switch (input) {
-      final native.Request request => request,
-      final native.RequestInput requestInput => native.Request(
-        requestInput,
-        init,
-      ),
-      final String url => native.Request(native.RequestInput.string(url), init),
-      final Uri url => native.Request(native.RequestInput.uri(url), init),
+      final Request request => _nativeRequestFromWrappedRequest(request, init),
+      final native.Request request => native.Request(request, init),
+      final String _ => native.Request(input, init),
+      final Uri _ => native.Request(input, init),
       final web.Request request => _nativeRequestFromWebRequest(request, init),
       _ => throw ArgumentError.value(input, 'input'),
     };
+  }
+
+  static native.Request _nativeRequestFromWrappedRequest(
+    Request request,
+    native.RequestInit? init,
+  ) {
+    final body = init?.body == null ? request.body : null;
+
+    return native.Request(
+      request.url,
+      native.RequestInit(
+        method: init?.method ?? request.method,
+        headers: init?.headers ?? js_headers.Headers(request.headers),
+        body: init?.body ?? body?.clone(),
+        referrer: init?.referrer ?? request.referrer,
+        referrerPolicy: init?.referrerPolicy ?? request.referrerPolicy,
+        mode: init?.mode ?? request.mode,
+        credentials: init?.credentials ?? request.credentials,
+        cache: init?.cache ?? request.cache,
+        redirect: init?.redirect ?? request.redirect,
+        integrity: init?.integrity ?? request.integrity,
+        keepalive: init?.keepalive ?? request.keepalive,
+        duplex: init?.duplex ?? request.duplex,
+      ),
+    );
   }
 
   static native.Request _nativeRequestFromWebRequest(
@@ -303,7 +325,7 @@ class Request implements native.Request {
     final body = wrapped.body;
 
     return native.Request(
-      native.RequestInput.string(wrapped.url),
+      wrapped.url,
       native.RequestInit(
         method: init?.method ?? wrapped.method,
         headers: init?.headers ?? js_headers.Headers(wrapped.headers),

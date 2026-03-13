@@ -73,28 +73,24 @@ enum RequestDuplex {
   final String value;
 }
 
-sealed class RequestInput {
-  const RequestInput();
-
-  const factory RequestInput.request(Request value) = RequestRequestInput;
-  const factory RequestInput.string(String value) = StringRequestInput;
-  const factory RequestInput.uri(Uri value) = UriRequestInput;
+sealed class _RequestInput {
+  const _RequestInput();
 }
 
-final class RequestRequestInput extends RequestInput {
-  const RequestRequestInput(this.value);
+final class _RequestRequestInput extends _RequestInput {
+  const _RequestRequestInput(this.value);
 
   final Request value;
 }
 
-final class StringRequestInput extends RequestInput {
-  const StringRequestInput(this.value);
+final class _StringRequestInput extends _RequestInput {
+  const _StringRequestInput(this.value);
 
   final String value;
 }
 
-final class UriRequestInput extends RequestInput {
-  const UriRequestInput(this.value);
+final class _UriRequestInput extends _RequestInput {
+  const _UriRequestInput(this.value);
 
   final Uri value;
 }
@@ -133,7 +129,10 @@ class RequestInit {
 
 /// Native request contract shell aligned with the MDN `Request` surface.
 class Request {
-  Request(RequestInput input, [RequestInit? init])
+  Request(Object? input, [RequestInit? init])
+    : this._(_coerceInput(_requireInput(input)), init);
+
+  Request._(_RequestInput input, [RequestInit? init])
     : headers = _headersFromInput(input, init?.headers),
       body = _bodyFromInput(input, init?.body),
       cache = _cacheFromInput(input, init?.cache),
@@ -149,7 +148,6 @@ class Request {
       referrer = _referrerFromInput(input, init?.referrer),
       referrerPolicy = _referrerPolicyFromInput(input, init?.referrerPolicy),
       url = _urlFromInput(input);
-
   final Headers headers;
   final Body? body;
   final RequestCache cache;
@@ -221,7 +219,7 @@ class Request {
 
   Request clone() {
     return Request(
-      RequestInput.string(url),
+      url,
       RequestInit(
         method: method,
         headers: Headers(headers),
@@ -239,133 +237,158 @@ class Request {
     );
   }
 
-  static Headers _headersFromInput(RequestInput input, HeadersInit? init) {
+  static Headers _headersFromInput(_RequestInput input, HeadersInit? init) {
     if (init != null) return Headers(init);
     return switch (input) {
-      RequestRequestInput(:final value) => Headers(value.headers),
+      _RequestRequestInput(:final value) => Headers(value.headers),
       _ => Headers(),
     };
   }
 
-  static Body? _bodyFromInput(RequestInput input, BodyInit? init) {
+  static Body? _bodyFromInput(_RequestInput input, BodyInit? init) {
     if (init != null) return Body(init);
     return switch (input) {
-      RequestRequestInput(:final value) => value.body?.clone(),
+      _RequestRequestInput(:final value) => value.body?.clone(),
       _ => null,
     };
   }
 
-  static RequestCache _cacheFromInput(RequestInput input, RequestCache? init) {
+  static RequestCache _cacheFromInput(_RequestInput input, RequestCache? init) {
     if (init != null) return init;
     return switch (input) {
-      RequestRequestInput(:final value) => value.cache,
+      _RequestRequestInput(:final value) => value.cache,
       _ => RequestCache.default_,
     };
   }
 
   static RequestCredentials _credentialsFromInput(
-    RequestInput input,
+    _RequestInput input,
     RequestCredentials? init,
   ) {
     if (init != null) return init;
     return switch (input) {
-      RequestRequestInput(:final value) => value.credentials,
+      _RequestRequestInput(:final value) => value.credentials,
       _ => RequestCredentials.sameOrigin,
     };
   }
 
-  static String _destinationFromInput(RequestInput input) {
+  static String _destinationFromInput(_RequestInput input) {
     return switch (input) {
-      RequestRequestInput(:final value) => value.destination,
+      _RequestRequestInput(:final value) => value.destination,
       _ => '',
     };
   }
 
   static RequestDuplex _duplexFromInput(
-    RequestInput input,
+    _RequestInput input,
     RequestDuplex? init,
   ) {
     if (init != null) return init;
     return switch (input) {
-      RequestRequestInput(:final value) => value.duplex,
+      _RequestRequestInput(:final value) => value.duplex,
       _ => RequestDuplex.half,
     };
   }
 
-  static String _integrityFromInput(RequestInput input, String? init) {
+  static String _integrityFromInput(_RequestInput input, String? init) {
     if (init != null) return init;
     return switch (input) {
-      RequestRequestInput(:final value) => value.integrity,
+      _RequestRequestInput(:final value) => value.integrity,
       _ => '',
     };
   }
 
-  static bool _isHistoryNavigationFromInput(RequestInput input) {
+  static bool _isHistoryNavigationFromInput(_RequestInput input) {
     return switch (input) {
-      RequestRequestInput(:final value) => value.isHistoryNavigation,
+      _RequestRequestInput(:final value) => value.isHistoryNavigation,
       _ => false,
     };
   }
 
-  static bool _keepaliveFromInput(RequestInput input, bool? init) {
+  static bool _keepaliveFromInput(_RequestInput input, bool? init) {
     if (init != null) return init;
     return switch (input) {
-      RequestRequestInput(:final value) => value.keepalive,
+      _RequestRequestInput(:final value) => value.keepalive,
       _ => false,
     };
   }
 
-  static HttpMethod _methodFromInput(RequestInput input, HttpMethod? init) {
+  static HttpMethod _methodFromInput(_RequestInput input, HttpMethod? init) {
     if (init != null) return init;
     return switch (input) {
-      RequestRequestInput(:final value) => value.method,
+      _RequestRequestInput(:final value) => value.method,
       _ => HttpMethod.get,
     };
   }
 
-  static RequestMode _modeFromInput(RequestInput input, RequestMode? init) {
+  static RequestMode _modeFromInput(_RequestInput input, RequestMode? init) {
     if (init != null) return init;
     return switch (input) {
-      RequestRequestInput(:final value) => value.mode,
+      _RequestRequestInput(:final value) => value.mode,
       _ => RequestMode.cors,
     };
   }
 
   static RequestRedirect _redirectFromInput(
-    RequestInput input,
+    _RequestInput input,
     RequestRedirect? init,
   ) {
     if (init != null) return init;
     return switch (input) {
-      RequestRequestInput(:final value) => value.redirect,
+      _RequestRequestInput(:final value) => value.redirect,
       _ => RequestRedirect.follow,
     };
   }
 
-  static String _referrerFromInput(RequestInput input, String? init) {
+  static String _referrerFromInput(_RequestInput input, String? init) {
     if (init != null) return init;
     return switch (input) {
-      RequestRequestInput(:final value) => value.referrer,
+      _RequestRequestInput(:final value) => value.referrer,
       _ => 'about:client',
     };
   }
 
   static RequestReferrerPolicy? _referrerPolicyFromInput(
-    RequestInput input,
+    _RequestInput input,
     RequestReferrerPolicy? init,
   ) {
     if (init != null) return init;
     return switch (input) {
-      RequestRequestInput(:final value) => value.referrerPolicy,
+      _RequestRequestInput(:final value) => value.referrerPolicy,
       _ => null,
     };
   }
 
-  static String _urlFromInput(RequestInput input) {
+  static String _urlFromInput(_RequestInput input) {
     return switch (input) {
-      RequestRequestInput(:final value) => value.url,
-      StringRequestInput(:final value) => Uri.parse(value).toString(),
-      UriRequestInput(:final value) => value.toString(),
+      _RequestRequestInput(:final value) => value.url,
+      _StringRequestInput(:final value) => Uri.parse(value).toString(),
+      _UriRequestInput(:final value) => value.toString(),
     };
+  }
+
+  static _RequestInput _coerceInput(Object input) {
+    return switch (input) {
+      final Request value => _RequestRequestInput(value),
+      final String value => _StringRequestInput(value),
+      final Uri value => _UriRequestInput(value),
+      _ => throw ArgumentError.value(
+        input,
+        'input',
+        'Unsupported request input: ${input.runtimeType}',
+      ),
+    };
+  }
+
+  static Object _requireInput(Object? input) {
+    if (input == null) {
+      throw ArgumentError.value(
+        input,
+        'input',
+        'Unsupported request input: ${input.runtimeType}',
+      );
+    }
+
+    return input;
   }
 }

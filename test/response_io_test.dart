@@ -1,3 +1,6 @@
+@TestOn('vm')
+library;
+
 import 'dart:io' as io;
 
 import 'package:ht/src/fetch/response.io.dart';

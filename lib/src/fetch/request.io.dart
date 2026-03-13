@@ -26,14 +26,14 @@ class Request implements native.Request {
   Request._(this._host);
 
   factory Request(Object? input, [native.RequestInit? init]) {
-    final host = switch ((input, init)) {
-      (final Request request, _) => request._host,
+    return Request._(switch ((input, init)) {
+      (final Request request, null) => request.clone()._host,
       (final io.HttpRequest request, null) => HttpRequestHost(request),
-      (final native.Request request, _) => NativeRequestHost(request),
+      (final native.Request request, null) => NativeRequestHost(
+        request.clone(),
+      ),
       _ => NativeRequestHost(_toNativeRequest(input, init)),
-    };
-
-    return Request._(host);
+    });
   }
 
   final RequestHost _host;
@@ -231,7 +231,7 @@ class Request implements native.Request {
     final body = this.body;
     return Request(
       native.Request(
-        native.RequestInput.string(url),
+        url,
         native.RequestInit(
           method: method,
           headers: io_headers.Headers(headers),
@@ -255,21 +255,40 @@ class Request implements native.Request {
     native.RequestInit? init,
   ) {
     return switch (input) {
-      final native.Request request => request,
-      final native.RequestInput requestInput => native.Request(
-        requestInput,
-        init,
-      ),
-      final String value => native.Request(
-        native.RequestInput.string(value),
-        init,
-      ),
-      final Uri value => native.Request(native.RequestInput.uri(value), init),
+      final Request request => _nativeRequestFromWrappedRequest(request, init),
+      final native.Request request => native.Request(request, init),
+      final String value => native.Request(value, init),
+      final Uri value => native.Request(value, init),
       _ => throw ArgumentError.value(
         input,
         'input',
         'Unsupported request input: ${input.runtimeType}',
       ),
     };
+  }
+
+  static native.Request _nativeRequestFromWrappedRequest(
+    Request request,
+    native.RequestInit? init,
+  ) {
+    final body = init?.body == null ? request.body : null;
+
+    return native.Request(
+      request.url,
+      native.RequestInit(
+        method: init?.method ?? request.method,
+        headers: init?.headers ?? io_headers.Headers(request.headers),
+        body: init?.body ?? body?.clone(),
+        referrer: init?.referrer ?? request.referrer,
+        referrerPolicy: init?.referrerPolicy ?? request.referrerPolicy,
+        mode: init?.mode ?? request.mode,
+        credentials: init?.credentials ?? request.credentials,
+        cache: init?.cache ?? request.cache,
+        redirect: init?.redirect ?? request.redirect,
+        integrity: init?.integrity ?? request.integrity,
+        keepalive: init?.keepalive ?? request.keepalive,
+        duplex: init?.duplex ?? request.duplex,
+      ),
+    );
   }
 }

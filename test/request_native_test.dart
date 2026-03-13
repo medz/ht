@@ -10,7 +10,7 @@ import 'package:test/test.dart';
 void main() {
   group('Request (native)', () {
     test('defaults metadata for string input', () {
-      final request = Request(RequestInput.string('https://example.com'));
+      final request = Request('https://example.com');
 
       expect(request.url, 'https://example.com');
       expect(request.method, HttpMethod.get);
@@ -31,7 +31,7 @@ void main() {
 
     test('inherits from input request and allows init overrides', () async {
       final upstream = Request(
-        RequestInput.uri(Uri.parse('https://example.com/base')),
+        Uri.parse('https://example.com/base'),
         RequestInit(
           method: HttpMethod.post,
           headers: Headers({'x-upstream': '1'}),
@@ -49,7 +49,7 @@ void main() {
       );
 
       final request = Request(
-        RequestInput.request(upstream),
+        upstream,
         RequestInit(
           method: HttpMethod.put,
           headers: Headers({'x-override': '2'}),
@@ -76,7 +76,7 @@ void main() {
 
     test('bytes, text, json and arrayBuffer delegate to body', () async {
       final textRequest = Request(
-        RequestInput.string('https://example.com/text'),
+        'https://example.com/text',
         RequestInit(
           method: HttpMethod.post,
           headers: Headers({'content-type': 'application/json'}),
@@ -87,24 +87,24 @@ void main() {
       expect(await textRequest.text(), '{"ok":true}');
 
       final bytesRequest = Request(
-        RequestInput.string('https://example.com/bytes'),
+        'https://example.com/bytes',
         RequestInit(body: utf8.encode('hello')),
       );
       expect(utf8.decode(await bytesRequest.bytes()), 'hello');
 
       final arrayBufferRequest = Request(
-        RequestInput.string('https://example.com/array-buffer'),
+        'https://example.com/array-buffer',
         RequestInit(body: utf8.encode('hello')),
       );
       expect(utf8.decode(await arrayBufferRequest.arrayBuffer()), 'hello');
 
       final parsedRequest = Request(
-        RequestInput.string('https://example.com/parsed'),
+        'https://example.com/parsed',
         RequestInit(body: '{"ok":true}'),
       );
       expect(await parsedRequest.json<Map<String, Object?>>(), {'ok': true});
 
-      final emptyRequest = Request(RequestInput.string('https://example.com'));
+      final emptyRequest = Request('https://example.com');
       expect(await emptyRequest.text(), '');
       expect(await emptyRequest.bytes(), isEmpty);
       await expectLater(emptyRequest.json(), throwsFormatException);
@@ -112,7 +112,7 @@ void main() {
 
     test('blob prefers explicit content-type header', () async {
       final request = Request(
-        RequestInput.string('https://example.com/blob'),
+        'https://example.com/blob',
         RequestInit(
           headers: Headers({'content-type': 'application/custom'}),
           body: 'hello',
@@ -128,7 +128,7 @@ void main() {
       'formData parses application/x-www-form-urlencoded request bodies',
       () async {
         final request = Request(
-          RequestInput.string('https://example.com/form'),
+          'https://example.com/form',
           RequestInit(
             method: HttpMethod.post,
             headers: Headers({
@@ -164,7 +164,7 @@ void main() {
 
       final headers = Headers()..set('content-type', encoded.contentType);
       final request = Request(
-        RequestInput.string('https://example.com/upload'),
+        'https://example.com/upload',
         RequestInit(
           method: HttpMethod.post,
           headers: headers,
@@ -185,7 +185,7 @@ void main() {
 
     test('clone duplicates unread stream bodies and metadata', () async {
       final request = Request(
-        RequestInput.string('https://example.com/clone'),
+        'https://example.com/clone',
         RequestInit(
           method: HttpMethod.post,
           headers: Headers({'x-id': '1'}),
@@ -217,7 +217,7 @@ void main() {
 
     test('clone fails after body has been consumed', () async {
       final request = Request(
-        RequestInput.string('https://example.com/clone'),
+        'https://example.com/clone',
         RequestInit(body: 'used'),
       );
 

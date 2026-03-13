@@ -1,3 +1,6 @@
+@TestOn('vm')
+library;
+
 import 'package:ht/src/fetch/url_search_params.dart';
 import 'package:test/test.dart';
 

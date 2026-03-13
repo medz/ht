@@ -1,3 +1,6 @@
+@TestOn('vm')
+library;
+
 import 'dart:io';
 
 import 'package:ht/src/core/http_method.dart';
@@ -10,13 +13,113 @@ void main() {
     test('caches body for wrapped native requests', () {
       final request = io_request.Request(
         native.Request(
-          const native.RequestInput.string('https://example.com'),
+          'https://example.com',
           native.RequestInit(body: 'payload'),
         ),
       );
 
       expect(identical(request.body, request.body), isTrue);
     });
+
+    test('applies init overrides when cloning from wrapped requests', () async {
+      final upstream = io_request.Request(
+        native.Request(
+          'https://example.com/base',
+          native.RequestInit(
+            method: HttpMethod.post,
+            headers: {'x-upstream': '1'},
+            body: 'payload',
+            cache: native.RequestCache.reload,
+          ),
+        ),
+      );
+
+      final request = io_request.Request(
+        upstream,
+        native.RequestInit(
+          method: HttpMethod.put,
+          headers: {'x-override': '2'},
+          cache: native.RequestCache.noStore,
+        ),
+      );
+
+      expect(request.url, 'https://example.com/base');
+      expect(request.method, HttpMethod.put);
+      expect(request.headers.get('x-upstream'), isNull);
+      expect(request.headers.get('x-override'), '2');
+      expect(request.cache, native.RequestCache.noStore);
+      expect(await request.text(), 'payload');
+    });
+
+    test('clones wrapped requests without init by teeing the body', () async {
+      final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+      addTearDown(server.close);
+      final port = server.port;
+
+      final requestFuture = server.first;
+
+      final client = HttpClient();
+      addTearDown(client.close);
+
+      final clientRequest = await client.post(
+        InternetAddress.loopbackIPv4.host,
+        port,
+        '/upstream-clone',
+      );
+      clientRequest.write('hello world');
+      final clientResponseFuture = clientRequest.close();
+
+      final httpRequest = await requestFuture;
+      final upstream = io_request.Request(httpRequest);
+      final clone = io_request.Request(upstream);
+
+      expect(upstream.bodyUsed, isFalse);
+      expect(clone.bodyUsed, isFalse);
+      expect(await upstream.text(), 'hello world');
+      expect(upstream.bodyUsed, isTrue);
+      expect(clone.bodyUsed, isFalse);
+      expect(await clone.text(), 'hello world');
+      expect(clone.bodyUsed, isTrue);
+
+      httpRequest.response
+        ..statusCode = HttpStatus.noContent
+        ..close();
+
+      final clientResponse = await clientResponseFuture;
+      await clientResponse.drain<void>();
+    });
+
+    test(
+      'rebuilds consumed wrapped requests when init provides a replacement body',
+      () async {
+        final upstream = io_request.Request(
+          native.Request(
+            'https://example.com/base',
+            native.RequestInit(
+              method: HttpMethod.post,
+              headers: {'x-upstream': '1'},
+              body: 'payload',
+            ),
+          ),
+        );
+
+        expect(await upstream.text(), 'payload');
+        expect(upstream.bodyUsed, isTrue);
+
+        final rebuilt = io_request.Request(
+          upstream,
+          native.RequestInit(body: 'replacement', headers: {'x-override': '2'}),
+        );
+
+        expect(rebuilt.url, 'https://example.com/base');
+        expect(rebuilt.method, HttpMethod.post);
+        expect(rebuilt.headers.get('x-upstream'), isNull);
+        expect(rebuilt.headers.get('x-override'), '2');
+        expect(rebuilt.bodyUsed, isFalse);
+        expect(await rebuilt.text(), 'replacement');
+        expect(rebuilt.bodyUsed, isTrue);
+      },
+    );
 
     test('wraps HttpRequest without copying headers or body eagerly', () async {
       final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
