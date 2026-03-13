@@ -107,27 +107,30 @@ void main() {
       expect(await part.text(), 'payload');
     });
 
-    test('does not unescape plain text CRLF sequences in quoted parameters', () async {
-      const boundary = 'escaped-boundary';
-      final body = Body(
-        '--$boundary\r\n'
-        'Content-Disposition: form-data; name="file"; filename="a\\nb.txt"\r\n'
-        'Content-Type: text/plain\r\n'
-        '\r\n'
-        'payload\r\n'
-        '--$boundary--\r\n',
-      );
+    test(
+      'does not unescape plain text CRLF sequences in quoted parameters',
+      () async {
+        const boundary = 'escaped-boundary';
+        final body = Body(
+          '--$boundary\r\n'
+          'Content-Disposition: form-data; name="file"; filename="a\\nb.txt"\r\n'
+          'Content-Type: text/plain\r\n'
+          '\r\n'
+          'payload\r\n'
+          '--$boundary--\r\n',
+        );
 
-      final formData = await FormData.parse(
-        body,
-        contentType: 'multipart/form-data; boundary=$boundary',
-      );
+        final formData = await FormData.parse(
+          body,
+          contentType: 'multipart/form-data; boundary=$boundary',
+        );
 
-      final part = formData.get('file');
-      expect(part, isA<BlobMultipart>());
-      expect((part as BlobMultipart).filename, r'a\nb.txt');
-      expect(await part.text(), 'payload');
-    });
+        final part = formData.get('file');
+        expect(part, isA<BlobMultipart>());
+        expect((part as BlobMultipart).filename, r'a\nb.txt');
+        expect(await part.text(), 'payload');
+      },
+    );
   });
 
   group('FormData.encodeMultipart (native)', () {
@@ -173,12 +176,7 @@ void main() {
 
       final entries = formData
           .entries()
-          .map(
-            (entry) => (
-              entry.key,
-              (entry.value as TextMultipart).value,
-            ),
-          )
+          .map((entry) => (entry.key, (entry.value as TextMultipart).value))
           .toList();
 
       expect(entries, [('a', 'x'), ('b', '2')]);
