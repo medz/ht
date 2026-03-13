@@ -84,6 +84,28 @@ void main() {
       expect(blob.type, 'text/plain;charset=utf-8');
       expect(await blob.text(), 'binary');
     });
+
+    test('parses quoted multipart parameters containing semicolons', () async {
+      const boundary = 'quoted-boundary';
+      final body = Body(
+        '--$boundary\r\n'
+        'Content-Disposition: form-data; name="file"; filename="a;b.txt"\r\n'
+        'Content-Type: text/plain\r\n'
+        '\r\n'
+        'payload\r\n'
+        '--$boundary--\r\n',
+      );
+
+      final formData = await FormData.parse(
+        body,
+        contentType: 'multipart/form-data; boundary=$boundary',
+      );
+
+      final part = formData.get('file');
+      expect(part, isA<BlobMultipart>());
+      expect((part as BlobMultipart).filename, 'a;b.txt');
+      expect(await part.text(), 'payload');
+    });
   });
 
   group('FormData.encodeMultipart (native)', () {
