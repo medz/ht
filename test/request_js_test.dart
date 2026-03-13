@@ -48,6 +48,36 @@ void main() {
       expect(request.bodyUsed, isTrue);
     });
 
+    test('applies init overrides when cloning from wrapped requests', () async {
+      final upstream = Request(
+        web.Request(
+          'https://example.com/base'.toJS,
+          web.RequestInit(
+            method: 'POST',
+            headers: {'x-upstream': '1'}.jsify()! as web.HeadersInit,
+            body: 'payload'.toJS,
+            cache: 'reload',
+          ),
+        ),
+      );
+
+      final request = Request(
+        upstream,
+        native.RequestInit(
+          method: HttpMethod.put,
+          headers: {'x-override': '2'},
+          cache: native.RequestCache.noStore,
+        ),
+      );
+
+      expect(request.url, 'https://example.com/base');
+      expect(request.method, HttpMethod.put);
+      expect(request.headers.get('x-upstream'), isNull);
+      expect(request.headers.get('x-override'), '2');
+      expect(request.cache, native.RequestCache.noStore);
+      expect(await request.text(), 'payload');
+    });
+
     test('clone tees a wrapped web.Request body', () async {
       final upstream = web.Request(
         'https://example.com/clone'.toJS,

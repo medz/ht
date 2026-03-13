@@ -1,10 +1,6 @@
 export 'request.native.dart'
     show
         RequestInit,
-        RequestInput,
-        RequestRequestInput,
-        StringRequestInput,
-        UriRequestInput,
         RequestMode,
         RequestCredentials,
         RequestCache,

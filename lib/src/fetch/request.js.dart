@@ -34,9 +34,9 @@ class Request implements native.Request {
 
   factory Request(Object? input, [native.RequestInit? init]) {
     final host = switch ((input, init)) {
-      (final Request request, _) => request._host,
+      (final Request request, null) => request._host,
       (final web.Request request, null) => WebRequestHost(request),
-      (final native.Request request, _) => NativeRequestHost(request),
+      (final native.Request request, null) => NativeRequestHost(request),
       _ => NativeRequestHost(_toNativeRequest(input, init)),
     };
 
@@ -283,13 +283,10 @@ class Request implements native.Request {
     native.RequestInit? init,
   ) {
     return switch (input) {
-      final native.Request request => request,
-      final native.RequestInput requestInput => native.Request(
-        requestInput,
-        init,
-      ),
-      final String url => native.Request(native.RequestInput.string(url), init),
-      final Uri url => native.Request(native.RequestInput.uri(url), init),
+      final native.Request request when init == null => request,
+      final native.Request request => native.Request(request, init),
+      final String _ => native.Request(input, init),
+      final Uri _ => native.Request(input, init),
       final web.Request request => _nativeRequestFromWebRequest(request, init),
       _ => throw ArgumentError.value(input, 'input'),
     };
@@ -303,7 +300,7 @@ class Request implements native.Request {
     final body = wrapped.body;
 
     return native.Request(
-      native.RequestInput.string(wrapped.url),
+      wrapped.url,
       native.RequestInit(
         method: init?.method ?? wrapped.method,
         headers: init?.headers ?? js_headers.Headers(wrapped.headers),

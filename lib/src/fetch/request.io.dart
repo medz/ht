@@ -27,9 +27,9 @@ class Request implements native.Request {
 
   factory Request(Object? input, [native.RequestInit? init]) {
     final host = switch ((input, init)) {
-      (final Request request, _) => request._host,
+      (final Request request, null) => request._host,
       (final io.HttpRequest request, null) => HttpRequestHost(request),
-      (final native.Request request, _) => NativeRequestHost(request),
+      (final native.Request request, null) => NativeRequestHost(request),
       _ => NativeRequestHost(_toNativeRequest(input, init)),
     };
 
@@ -231,7 +231,7 @@ class Request implements native.Request {
     final body = this.body;
     return Request(
       native.Request(
-        native.RequestInput.string(url),
+        url,
         native.RequestInit(
           method: method,
           headers: io_headers.Headers(headers),
@@ -255,16 +255,10 @@ class Request implements native.Request {
     native.RequestInit? init,
   ) {
     return switch (input) {
-      final native.Request request => request,
-      final native.RequestInput requestInput => native.Request(
-        requestInput,
-        init,
-      ),
-      final String value => native.Request(
-        native.RequestInput.string(value),
-        init,
-      ),
-      final Uri value => native.Request(native.RequestInput.uri(value), init),
+      final native.Request request when init == null => request,
+      final native.Request request => native.Request(request, init),
+      final String value => native.Request(value, init),
+      final Uri value => native.Request(value, init),
       _ => throw ArgumentError.value(
         input,
         'input',

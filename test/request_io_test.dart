@@ -10,12 +10,42 @@ void main() {
     test('caches body for wrapped native requests', () {
       final request = io_request.Request(
         native.Request(
-          const native.RequestInput.string('https://example.com'),
+          'https://example.com',
           native.RequestInit(body: 'payload'),
         ),
       );
 
       expect(identical(request.body, request.body), isTrue);
+    });
+
+    test('applies init overrides when cloning from wrapped requests', () async {
+      final upstream = io_request.Request(
+        native.Request(
+          'https://example.com/base',
+          native.RequestInit(
+            method: HttpMethod.post,
+            headers: {'x-upstream': '1'},
+            body: 'payload',
+            cache: native.RequestCache.reload,
+          ),
+        ),
+      );
+
+      final request = io_request.Request(
+        upstream,
+        native.RequestInit(
+          method: HttpMethod.put,
+          headers: {'x-override': '2'},
+          cache: native.RequestCache.noStore,
+        ),
+      );
+
+      expect(request.url, 'https://example.com/base');
+      expect(request.method, HttpMethod.put);
+      expect(request.headers.get('x-upstream'), isNull);
+      expect(request.headers.get('x-override'), '2');
+      expect(request.cache, native.RequestCache.noStore);
+      expect(await request.text(), 'payload');
     });
 
     test('wraps HttpRequest without copying headers or body eagerly', () async {

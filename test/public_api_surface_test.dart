@@ -20,7 +20,7 @@ void main() {
     final blockBody = block.Block(<Object>['block-body'], type: 'text/plain');
 
     final request = Request(
-      RequestInput.uri(Uri.parse('https://example.com/upload')),
+      Uri.parse('https://example.com/upload'),
       RequestInit(method: requestInit.method, headers: headers, body: form),
     );
 
