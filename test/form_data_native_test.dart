@@ -118,4 +118,26 @@ void main() {
       expect(fromStream.takeBytes(), bytes);
     });
   });
+
+  group('FormData mutation semantics (native)', () {
+    test('set replaces the first matching entry in place', () {
+      final formData = FormData()
+        ..append('a', Multipart.text('1'))
+        ..append('b', Multipart.text('2'))
+        ..append('a', Multipart.text('3'))
+        ..set('a', Multipart.text('x'));
+
+      final entries = formData
+          .entries()
+          .map(
+            (entry) => (
+              entry.key,
+              (entry.value as TextMultipart).value,
+            ),
+          )
+          .toList();
+
+      expect(entries, [('a', 'x'), ('b', '2')]);
+    });
+  });
 }
