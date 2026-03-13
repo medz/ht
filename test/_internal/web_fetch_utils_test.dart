@@ -19,10 +19,7 @@ void main() {
           web.File(
             ['payload'.toJS].toJS,
             'payload.txt',
-            web.FilePropertyBag(
-              type: 'text/plain',
-              lastModified: lastModified,
-            ),
+            web.FilePropertyBag(type: 'text/plain', lastModified: lastModified),
           ),
         );
 
