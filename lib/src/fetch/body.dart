@@ -55,9 +55,7 @@ class Body extends Stream<Uint8List> {
       final ByteBuffer buffer => Body._(
         blockHost: block.Block([buffer.asUint8List()]),
       ),
-      final List<int> bytes => Body._(
-        blockHost: block.Block([Uint8List.fromList(bytes)]),
-      ),
+      final List<int> bytes => Body._(blockHost: block.Block([bytes])),
       final Blob blob => Body._(blockHost: blob),
       final block.Block blockHost => Body._(blockHost: blockHost),
       final URLSearchParams params => Body._(
