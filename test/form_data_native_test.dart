@@ -131,6 +131,32 @@ void main() {
         expect(await part.text(), 'payload');
       },
     );
+
+    test(
+      'preserves literal backslash-quote sequences in quoted parameters',
+      () async {
+        final encoded =
+            (FormData()
+                  ..append(
+                    'file',
+                    Multipart.blob(
+                      Blob(<BlobPart>['payload'], 'text/plain'),
+                      'a\\"b.txt',
+                    ),
+                  ))
+                .encodeMultipart(boundary: 'quote-escape-boundary');
+
+        final formData = await FormData.parse(
+          Body(encoded.stream),
+          contentType: encoded.contentType,
+        );
+
+        final part = formData.get('file');
+        expect(part, isA<BlobMultipart>());
+        expect((part as BlobMultipart).filename, 'a\\"b.txt');
+        expect(await part.text(), 'payload');
+      },
+    );
   });
 
   group('FormData.encodeMultipart (native)', () {
