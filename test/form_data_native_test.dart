@@ -136,14 +136,13 @@ void main() {
       'preserves literal backslash-quote sequences in quoted parameters',
       () async {
         final encoded =
-            (FormData()
-                  ..append(
-                    'file',
-                    Multipart.blob(
-                      Blob(<BlobPart>['payload'], 'text/plain'),
-                      'a\\"b.txt',
-                    ),
-                  ))
+            (FormData()..append(
+                  'file',
+                  Multipart.blob(
+                    Blob(<BlobPart>['payload'], 'text/plain'),
+                    'a\\"b.txt',
+                  ),
+                ))
                 .encodeMultipart(boundary: 'quote-escape-boundary');
 
         final formData = await FormData.parse(
