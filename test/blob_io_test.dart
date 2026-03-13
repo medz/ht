@@ -61,5 +61,24 @@ void main() {
 
       expect(chunks, ['he', 'll', 'o']);
     });
+
+    test('captures file length at construction time', () async {
+      final tempDir = await io.Directory.systemTemp.createTemp('ht_blob_io_');
+      addTearDown(() async {
+        if (await tempDir.exists()) {
+          await tempDir.delete(recursive: true);
+        }
+      });
+
+      final file = io.File('${tempDir.path}/payload.txt');
+      await file.writeAsString('hello');
+
+      final blob = io_blob.Blob([file], 'text/plain');
+
+      await file.writeAsString('hello world');
+
+      expect(blob.size, 5);
+      expect(await blob.text(), 'hello');
+    });
   });
 }
