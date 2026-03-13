@@ -386,11 +386,7 @@ class FormData with Iterable<MapEntry<String, Multipart>> {
   }
 
   static String _unescapeHeaderValue(String value) {
-    return value
-        .replaceAll(r'\\', '\\')
-        .replaceAll(r'\"', '"')
-        .replaceAll(r'\r', '\r')
-        .replaceAll(r'\n', '\n');
+    return value.replaceAll(r'\\', '\\').replaceAll(r'\"', '"');
   }
 
   static int _indexOf(List<int> haystack, List<int> needle, [int start = 0]) {
