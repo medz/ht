@@ -23,7 +23,8 @@ Future<Blob> blobFromWebPromise(
   JSPromise<web.Blob> promise, {
   String? type,
 }) async {
-  return Blob(<Object>[await promise.toDart], type ?? '');
+  final hostBlob = await promise.toDart;
+  return Blob(<Object>[hostBlob], type ?? hostBlob.type);
 }
 
 FormData formDataFromWebHost(web.FormData host) {
