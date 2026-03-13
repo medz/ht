@@ -24,6 +24,8 @@ class Blob extends native.Blob implements block.Block {
     return switch (part) {
       final Blob blob => blob,
       final native.Blob blob => blob,
+      // Downstream shim until block exposes a reusable public file-backed
+      // primitive: https://github.com/medz/block/issues/10
       final io.File file => _FileBlock(file),
       _ => native.Blob([part]),
     };
@@ -31,7 +33,8 @@ class Blob extends native.Blob implements block.Block {
 }
 
 /// Temporary downstream file-backed block until `block` exposes reusable
-/// io-backed file primitives. See https://github.com/medz/block/issues/10.
+/// io-backed file primitives. Once https://github.com/medz/block/issues/10 is
+/// available, this wrapper should be replaced with the upstream implementation.
 final class _FileBlock implements block.Block {
   _FileBlock(this._file, {int start = 0, int? length, this.type = ''})
     : _start = start,
