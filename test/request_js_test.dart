@@ -69,7 +69,10 @@ void main() {
 
       final request = Request(upstream);
 
-      expect(await request.bytes(), Uint8List.fromList(utf8.encode('hello bytes')));
+      expect(
+        await request.bytes(),
+        Uint8List.fromList(utf8.encode('hello bytes')),
+      );
       expect(request.bodyUsed, isTrue);
     });
 

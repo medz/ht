@@ -7,13 +7,8 @@ Future<void> main() async {
     RequestInput.uri(Uri.parse('https://api.example.com/tasks')),
     RequestInit(
       method: HttpMethod.post,
-      headers: Headers({
-        'content-type': 'application/json; charset=utf-8',
-      }),
-      body: jsonEncode({
-        'title': 'Ship ht',
-        'priority': 'high',
-      }),
+      headers: Headers({'content-type': 'application/json; charset=utf-8'}),
+      body: jsonEncode({'title': 'Ship ht', 'priority': 'high'}),
     ),
   );
 

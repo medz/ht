@@ -97,9 +97,7 @@ void main() {
     test('blob prefers explicit content-type header', () async {
       final response = Response(
         'hello',
-        ResponseInit(
-          headers: Headers({'content-type': 'application/custom'}),
-        ),
+        ResponseInit(headers: Headers({'content-type': 'application/custom'})),
       );
 
       final blob = await response.blob();
@@ -107,25 +105,28 @@ void main() {
       expect(await blob.text(), 'hello');
     });
 
-    test('formData parses application/x-www-form-urlencoded responses', () async {
-      final response = Response(
-        'a=1&a=2&hello=world+x',
-        ResponseInit(
-          headers: Headers({
-            'content-type': 'application/x-www-form-urlencoded;charset=utf-8',
-          }),
-        ),
-      );
+    test(
+      'formData parses application/x-www-form-urlencoded responses',
+      () async {
+        final response = Response(
+          'a=1&a=2&hello=world+x',
+          ResponseInit(
+            headers: Headers({
+              'content-type': 'application/x-www-form-urlencoded;charset=utf-8',
+            }),
+          ),
+        );
 
-      final formData = await response.formData();
+        final formData = await response.formData();
 
-      expect((formData.get('a')! as TextMultipart).value, '1');
-      expect(
-        formData.getAll('a').map((value) => (value as TextMultipart).value),
-        ['1', '2'],
-      );
-      expect((formData.get('hello')! as TextMultipart).value, 'world x');
-    });
+        expect((formData.get('a')! as TextMultipart).value, '1');
+        expect(
+          formData.getAll('a').map((value) => (value as TextMultipart).value),
+          ['1', '2'],
+        );
+        expect((formData.get('hello')! as TextMultipart).value, 'world x');
+      },
+    );
 
     test('formData parses multipart responses', () async {
       final encoded =
@@ -141,12 +142,7 @@ void main() {
               .encodeMultipart(boundary: 'response-boundary');
 
       final headers = Headers()..set('content-type', encoded.contentType);
-      final response = Response(
-        encoded.stream,
-        ResponseInit(
-          headers: headers,
-        ),
-      );
+      final response = Response(encoded.stream, ResponseInit(headers: headers));
 
       final formData = await response.formData();
 
