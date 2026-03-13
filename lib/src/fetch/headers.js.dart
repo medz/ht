@@ -52,9 +52,10 @@ class Headers
     while (true) {
       final result = iterator.next();
       if (result.done) break;
-      if (result.value == null ||
-          result.value.isUndefinedOrNull ||
-          web.Array.isArray(result.value!)) {
+      if (result.value == null || result.value.isUndefinedOrNull) {
+        continue;
+      }
+      if (!web.Array.isArray(result.value!)) {
         continue;
       }
       final [name, value] = (result.value as JSArray<JSString>).toDart;
