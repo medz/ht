@@ -1,5 +1,7 @@
 import 'dart:js_interop';
 
+import 'package:web/web.dart' as dom;
+
 import '../_internal/web_utils.dart' as web;
 import 'headers.native.dart' as native;
 
@@ -12,6 +14,7 @@ class Headers
     final host = switch (init) {
       null => web.Headers(),
       Headers(:final host) => web.Headers(host),
+      final dom.Headers headers => web.Headers(headers),
       final Iterable<MapEntry<String, String>> entries =>
         web.Headers.fromEntries(entries),
       final Map<String, String> map => web.Headers.fromMap(map),
