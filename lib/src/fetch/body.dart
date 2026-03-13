@@ -80,7 +80,7 @@ class Body extends Stream<Uint8List> {
   Stream<Uint8List>? _streamHost;
   bool _used = false;
 
-  Stream<Uint8List>? get stream async* {
+  Stream<Uint8List> get stream async* {
     final blockHost = _blockHost;
     final streamHost = _streamHost;
     if (blockHost == null && streamHost == null) {
@@ -102,9 +102,6 @@ class Body extends Stream<Uint8List> {
   bool get bodyUsed => _used;
 
   Future<Uint8List> bytes() async {
-    final stream = this.stream;
-    if (stream == null) return Uint8List(0);
-
     final builder = BytesBuilder(copy: false);
     await for (final chunk in stream) {
       builder.add(chunk);
@@ -162,16 +159,6 @@ class Body extends Stream<Uint8List> {
     void Function()? onDone,
     bool? cancelOnError,
   }) {
-    final stream = this.stream;
-    if (stream == null) {
-      return Stream<Uint8List>.empty().listen(
-        onData,
-        onError: onError,
-        onDone: onDone,
-        cancelOnError: cancelOnError,
-      );
-    }
-
     return stream.listen(
       onData,
       onError: onError,

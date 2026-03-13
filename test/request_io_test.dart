@@ -7,6 +7,17 @@ import 'package:test/test.dart';
 
 void main() {
   group('Request (io)', () {
+    test('caches body for wrapped native requests', () {
+      final request = io_request.Request(
+        native.Request(
+          const native.RequestInput.string('https://example.com'),
+          native.RequestInit(body: 'payload'),
+        ),
+      );
+
+      expect(identical(request.body, request.body), isTrue);
+    });
+
     test('wraps HttpRequest without copying headers or body eagerly', () async {
       final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
       addTearDown(server.close);
