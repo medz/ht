@@ -325,7 +325,7 @@ class FormData with Iterable<MapEntry<String, Multipart>> {
 
   static Map<String, String> _parseHeaderParameters(String value) {
     final parameters = <String, String>{};
-    for (final segment in value.split(';').skip(1)) {
+    for (final segment in _splitHeaderParameters(value).skip(1)) {
       final separator = segment.indexOf('=');
       if (separator == -1) {
         continue;
@@ -343,6 +343,46 @@ class FormData with Iterable<MapEntry<String, Multipart>> {
     }
 
     return parameters;
+  }
+
+  static List<String> _splitHeaderParameters(String value) {
+    final segments = <String>[];
+    final buffer = StringBuffer();
+    var quoted = false;
+    var escaped = false;
+
+    for (final rune in value.runes) {
+      final char = String.fromCharCode(rune);
+
+      if (escaped) {
+        buffer.write(char);
+        escaped = false;
+        continue;
+      }
+
+      if (char == r'\') {
+        buffer.write(char);
+        escaped = true;
+        continue;
+      }
+
+      if (char == '"') {
+        buffer.write(char);
+        quoted = !quoted;
+        continue;
+      }
+
+      if (char == ';' && !quoted) {
+        segments.add(buffer.toString());
+        buffer.clear();
+        continue;
+      }
+
+      buffer.write(char);
+    }
+
+    segments.add(buffer.toString());
+    return segments;
   }
 
   static String _unescapeHeaderValue(String value) {
