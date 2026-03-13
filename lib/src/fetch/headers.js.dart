@@ -65,7 +65,7 @@ class Headers
 
   @override
   String? get(String name) {
-    if (name.toLowerCase() == 'set-cookie') return null;
+    if (name.trim().toLowerCase() == 'set-cookie') return null;
     return host.get(name);
   }
 
