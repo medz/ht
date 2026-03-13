@@ -6,6 +6,7 @@ import 'dart:typed_data';
 
 import 'package:web/web.dart' as web;
 
+import '../_internal/web_fetch_utils.dart' as web_fetch;
 import '../_internal/web_stream_bridge.dart';
 import 'blob.dart';
 import 'body.dart';
@@ -145,9 +146,15 @@ class Response implements native.Response {
 
   @override
   Future<Blob> blob() async {
-    final blob = switch (body) {
-      final Body body => await body.blob(),
-      null => Blob(),
+    final blob = await switch (_host) {
+      final WebResponseHost host => web_fetch.blobFromWebPromise(
+        host.value.blob(),
+        type: headers.get('content-type'),
+      ),
+      _ => switch (body) {
+        final Body body => body.blob(),
+        null => Future<Blob>.value(Blob()),
+      },
     };
 
     final type = headers.get('content-type');
@@ -160,22 +167,33 @@ class Response implements native.Response {
 
   @override
   Future<Uint8List> bytes() {
-    return switch (body) {
-      final Body body => body.bytes(),
-      null => Future<Uint8List>.value(Uint8List(0)),
+    return switch (_host) {
+      final WebResponseHost host => web_fetch.bytesFromWebPromise(
+        host.value.bytes(),
+      ),
+      _ => switch (body) {
+        final Body body => body.bytes(),
+        null => Future<Uint8List>.value(Uint8List(0)),
+      },
     };
   }
 
   @override
   Future<FormData> formData() {
-    return switch (body) {
-      final Body body => FormData.parse(
-        body,
-        contentType: headers.get('content-type'),
-      ),
-      null => Future<FormData>.error(
-        const FormatException('Cannot decode form data from an empty body.'),
-      ),
+    return switch (_host) {
+      final WebResponseHost host => host.value
+          .formData()
+          .toDart
+          .then(web_fetch.formDataFromWebHost),
+      _ => switch (body) {
+        final Body body => FormData.parse(
+          body,
+          contentType: headers.get('content-type'),
+        ),
+        null => Future<FormData>.error(
+          const FormatException('Cannot decode form data from an empty body.'),
+        ),
+      },
     };
   }
 
@@ -191,9 +209,14 @@ class Response implements native.Response {
 
   @override
   Future<String> text() {
-    return switch (body) {
-      final Body body => body.text(),
-      null => Future<String>.value(''),
+    return switch (_host) {
+      final WebResponseHost host => web_fetch.textFromWebPromise(
+        host.value.text(),
+      ),
+      _ => switch (body) {
+        final Body body => body.text(),
+        null => Future<String>.value(''),
+      },
     };
   }
 
