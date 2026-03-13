@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:typed_data';
 
 import '../core/http_status.dart';
@@ -37,6 +38,64 @@ class Response {
       redirected = false,
       type = ResponseType.default_,
       url = '';
+
+  Response._internal({
+    required this.body,
+    required this.headers,
+    required this.ok,
+    required this.redirected,
+    required this.status,
+    required this.statusText,
+    required this.type,
+    required this.url,
+  });
+
+  factory Response.error() {
+    return Response._internal(
+      body: null,
+      headers: Headers(),
+      ok: false,
+      redirected: false,
+      status: 0,
+      statusText: '',
+      type: ResponseType.error,
+      url: '',
+    );
+  }
+
+  factory Response.json(Object? data, [ResponseInit? init]) {
+    final headers = _headersFromInit(init?.headers);
+    if (!headers.has('content-type')) {
+      headers.set('content-type', 'application/json; charset=utf-8');
+    }
+
+    return Response(
+      jsonEncode(data),
+      ResponseInit(
+        status: init?.status,
+        statusText: init?.statusText,
+        headers: headers,
+      ),
+    );
+  }
+
+  factory Response.redirect(Uri url, [int status = HttpStatus.found]) {
+    if (!const <int>{301, 302, 303, 307, 308}.contains(status)) {
+      throw ArgumentError.value(
+        status,
+        'status',
+        'Redirect response must use one of 301, 302, 303, 307, 308',
+      );
+    }
+
+    return Response(
+      null,
+      ResponseInit(
+        status: status,
+        headers: Headers()..set('location', url.toString()),
+      ),
+    );
+  }
 
   final Body? body;
   final Headers headers;
