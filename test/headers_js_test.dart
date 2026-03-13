@@ -15,7 +15,10 @@ void main() {
       );
 
       expect(
-        headers.entries().map((entry) => '${entry.key}:${entry.value}').toList(),
+        headers
+            .entries()
+            .map((entry) => '${entry.key}:${entry.value}')
+            .toList(),
         ['x-a:1', 'x-b:2'],
       );
     });

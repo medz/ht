@@ -35,18 +35,21 @@ void main() {
       expect(await blob.text(), 'payload');
     });
 
-    test('preserves host blob MIME type when no override is provided', () async {
-      final response = web.Response(
-        'payload'.toJS,
-        web.ResponseInit(
-          headers: {'content-type': 'text/plain'}.jsify()! as web.HeadersInit,
-        ),
-      );
+    test(
+      'preserves host blob MIME type when no override is provided',
+      () async {
+        final response = web.Response(
+          'payload'.toJS,
+          web.ResponseInit(
+            headers: {'content-type': 'text/plain'}.jsify()! as web.HeadersInit,
+          ),
+        );
 
-      final blob = await web_fetch.blobFromWebPromise(response.blob());
+        final blob = await web_fetch.blobFromWebPromise(response.blob());
 
-      expect(blob.type, 'text/plain');
-      expect(await blob.text(), 'payload');
-    });
+        expect(blob.type, 'text/plain');
+        expect(await blob.text(), 'payload');
+      },
+    );
   });
 }
