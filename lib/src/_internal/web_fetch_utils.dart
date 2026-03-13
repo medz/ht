@@ -53,7 +53,14 @@ FormData formDataFromWebHost(web.FormData host) {
     if (entry case final web.File file) {
       formData.append(
         key,
-        Multipart.blob(File(<Object>[file], file.name, type: file.type)),
+        Multipart.blob(
+          File(
+            <Object>[file],
+            file.name,
+            type: file.type,
+            lastModified: file.lastModified,
+          ),
+        ),
       );
       continue;
     }

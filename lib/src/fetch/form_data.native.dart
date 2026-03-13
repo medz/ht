@@ -35,6 +35,10 @@ final class BlobMultipart extends File implements Multipart {
           _ => filename ?? 'blob',
         },
         type: value.type,
+        lastModified: switch (value) {
+          final File file => file.lastModified,
+          _ => null,
+        },
       );
 
   final String filename;
