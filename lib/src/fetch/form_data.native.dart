@@ -133,8 +133,18 @@ class FormData with Iterable<MapEntry<String, Multipart>> {
   }
 
   void set(String name, Multipart value) {
-    delete(name);
-    append(name, value);
+    final firstIndex = _entries.indexWhere((entry) => entry.key == name);
+    if (firstIndex == -1) {
+      append(name, value);
+      return;
+    }
+
+    _entries[firstIndex] = MapEntry<String, Multipart>(name, value);
+    for (var index = _entries.length - 1; index > firstIndex; index--) {
+      if (_entries[index].key == name) {
+        _entries.removeAt(index);
+      }
+    }
   }
 
   EncodedFormData encodeMultipart({String? boundary}) {
