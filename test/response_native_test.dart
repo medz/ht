@@ -8,6 +8,17 @@ import 'package:test/test.dart';
 
 void main() {
   group('Response (native)', () {
+    test('error factory creates an error response', () async {
+      final response = Response.error();
+
+      expect(response.type, ResponseType.error);
+      expect(response.status, 0);
+      expect(response.statusText, '');
+      expect(response.ok, isFalse);
+      expect(response.headers.entries(), isEmpty);
+      expect(await response.text(), '');
+    });
+
     test('defaults metadata for empty responses', () async {
       final response = Response();
 
@@ -39,6 +50,31 @@ void main() {
       expect(response.ok, isTrue);
       expect(response.headers.get('x-id'), '1');
       expect(await response.text(), 'payload');
+    });
+
+    test('json factory encodes payload and sets content-type', () async {
+      final response = Response.json({'ok': true});
+
+      expect(response.status, 200);
+      expect(response.ok, isTrue);
+      expect(
+        response.headers.get('content-type'),
+        'application/json; charset=utf-8',
+      );
+      expect(await response.json<Map<String, Object?>>(), {'ok': true});
+    });
+
+    test('redirect factory sets location and validates status', () {
+      final response = Response.redirect(Uri.parse('https://example.com/next'));
+
+      expect(response.status, 302);
+      expect(response.redirected, isFalse);
+      expect(response.headers.get('location'), 'https://example.com/next');
+
+      expect(
+        () => Response.redirect(Uri.parse('https://example.com/next'), 200),
+        throwsArgumentError,
+      );
     });
 
     test('bytes, text, json and arrayBuffer delegate to body', () async {
