@@ -29,15 +29,19 @@ class ResponseInit {
 }
 
 class Response {
-  Response([BodyInit? body, ResponseInit? init])
-    : body = _bodyFromInit(body),
-      headers = _headersFromInit(init?.headers),
-      status = _validateStatus(init?.status ?? HttpStatus.ok),
-      statusText = init?.statusText ?? '',
-      ok = HttpStatus.isSuccess(init?.status ?? HttpStatus.ok),
-      redirected = false,
-      type = ResponseType.default_,
-      url = '';
+  factory Response([BodyInit? body, ResponseInit? init]) {
+    final status = _validateStatus(init?.status ?? HttpStatus.ok);
+    return Response._internal(
+      body: _bodyFromInit(body, status),
+      headers: _headersFromInit(init?.headers),
+      ok: HttpStatus.isSuccess(status),
+      redirected: false,
+      status: status,
+      statusText: init?.statusText ?? '',
+      type: ResponseType.default_,
+      url: '',
+    );
+  }
 
   Response._internal({
     required this.body,
@@ -172,9 +176,14 @@ class Response {
     );
   }
 
-  static Body? _bodyFromInit(BodyInit? init) {
+  static Body? _bodyFromInit(BodyInit? init, int status) {
     return switch (init) {
       null => null,
+      _ when _isNullBodyStatus(status) => throw ArgumentError.value(
+        init,
+        'body',
+        'Response status $status cannot have a body.',
+      ),
       _ => Body(init),
     };
   }
@@ -187,7 +196,17 @@ class Response {
   }
 
   static int _validateStatus(int status) {
-    HttpStatus.validate(status);
+    if (status < 200 || status > 599) {
+      throw RangeError.range(status, 200, 599, 'status');
+    }
     return status;
+  }
+
+  static bool _isNullBodyStatus(int status) {
+    return const <int>{
+      HttpStatus.noContent,
+      HttpStatus.resetContent,
+      HttpStatus.notModified,
+    }.contains(status);
   }
 }

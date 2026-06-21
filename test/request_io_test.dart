@@ -14,7 +14,7 @@ void main() {
       final request = io_request.Request(
         native.Request(
           'https://example.com',
-          native.RequestInit(body: 'payload'),
+          native.RequestInit(method: HttpMethod.post, body: 'payload'),
         ),
       );
 
@@ -90,6 +90,85 @@ void main() {
     });
 
     test(
+      'clones wrapped GET requests without forwarding empty host body',
+      () async {
+        final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+        addTearDown(server.close);
+        final port = server.port;
+
+        final requestFuture = server.first;
+
+        final client = HttpClient();
+        addTearDown(client.close);
+
+        final clientRequest = await client.get(
+          InternetAddress.loopbackIPv4.host,
+          port,
+          '/bodyless-clone',
+        );
+        final clientResponseFuture = clientRequest.close();
+
+        final httpRequest = await requestFuture;
+        final upstream = io_request.Request(httpRequest);
+        final clone = io_request.Request(upstream);
+
+        expect(clone.method, HttpMethod.get);
+        expect(clone.body, isNull);
+        expect(await clone.text(), '');
+
+        httpRequest.response
+          ..statusCode = HttpStatus.noContent
+          ..close();
+
+        final clientResponse = await clientResponseFuture;
+        await clientResponse.drain<void>();
+      },
+    );
+
+    test(
+      'rejects overriding wrapped bodyful requests to bodyless methods',
+      () async {
+        final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+        addTearDown(server.close);
+        final port = server.port;
+
+        final requestFuture = server.first;
+
+        final client = HttpClient();
+        addTearDown(client.close);
+
+        final clientRequest = await client.post(
+          InternetAddress.loopbackIPv4.host,
+          port,
+          '/bodyful-override',
+        );
+        clientRequest.write('payload');
+        final clientResponseFuture = clientRequest.close();
+
+        final httpRequest = await requestFuture;
+        final upstream = io_request.Request(httpRequest);
+
+        expect(
+          () => io_request.Request(
+            upstream,
+            native.RequestInit(method: HttpMethod.get),
+          ),
+          throwsArgumentError,
+        );
+
+        expect(upstream.bodyUsed, isFalse);
+        expect(await upstream.text(), 'payload');
+
+        httpRequest.response
+          ..statusCode = HttpStatus.noContent
+          ..close();
+
+        final clientResponse = await clientResponseFuture;
+        await clientResponse.drain<void>();
+      },
+    );
+
+    test(
       'rebuilds consumed wrapped requests when init provides a replacement body',
       () async {
         final upstream = io_request.Request(
@@ -120,6 +199,16 @@ void main() {
         expect(rebuilt.bodyUsed, isTrue);
       },
     );
+
+    test('rejects native construction bodies for bodyless methods', () {
+      expect(
+        () => io_request.Request(
+          'https://example.com',
+          native.RequestInit(method: HttpMethod.head, body: 'payload'),
+        ),
+        throwsArgumentError,
+      );
+    });
 
     test('wraps HttpRequest without copying headers or body eagerly', () async {
       final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);

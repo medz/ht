@@ -192,7 +192,7 @@ class Response implements native.Response {
       final NativeResponseHost host => Response(host.value.clone()),
       final HttpClientResponseHost _ => Response(
         native.Response(
-          body?.clone(),
+          _bodyForNativeClone(),
           native.ResponseInit(
             status: status,
             statusText: statusText,
@@ -201,5 +201,21 @@ class Response implements native.Response {
         ),
       ),
     };
+  }
+
+  Body? _bodyForNativeClone() {
+    if (!_statusAllowsBody(status)) {
+      return null;
+    }
+
+    return body?.clone();
+  }
+
+  static bool _statusAllowsBody(int status) {
+    return !const <int>{
+      HttpStatus.noContent,
+      HttpStatus.resetContent,
+      HttpStatus.notModified,
+    }.contains(status);
   }
 }

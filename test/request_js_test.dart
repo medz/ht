@@ -123,6 +123,16 @@ void main() {
       },
     );
 
+    test('rejects native construction bodies for bodyless methods', () {
+      expect(
+        () => Request(
+          'https://example.com',
+          native.RequestInit(method: HttpMethod.head, body: 'payload'),
+        ),
+        throwsArgumentError,
+      );
+    });
+
     test('clone tees a wrapped web.Request body', () async {
       final upstream = web.Request(
         'https://example.com/clone'.toJS,

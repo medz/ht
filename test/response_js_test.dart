@@ -87,6 +87,17 @@ void main() {
       expect(await json.text(), '{"ok":true}');
     });
 
+    test('enforces native constructor invariants', () {
+      expect(
+        () => Response(null, const native.ResponseInit(status: 199)),
+        throwsRangeError,
+      );
+      expect(
+        () => Response('payload', const native.ResponseInit(status: 204)),
+        throwsArgumentError,
+      );
+    });
+
     test('reads formData directly from web host', () async {
       final formResponse = Response(
         web.Response(

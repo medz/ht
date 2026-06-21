@@ -133,8 +133,13 @@ class Request {
     : this._(_coerceInput(_requireInput(input)), init);
 
   Request._(_RequestInput input, [RequestInit? init])
-    : headers = _headersFromInput(input, init?.headers),
-      body = _bodyFromInput(input, init?.body),
+    : method = _methodFromInput(input, init?.method),
+      headers = _headersFromInput(input, init?.headers),
+      body = _bodyFromInput(
+        input,
+        init?.body,
+        _methodFromInput(input, init?.method),
+      ),
       cache = _cacheFromInput(input, init?.cache),
       credentials = _credentialsFromInput(input, init?.credentials),
       destination = _destinationFromInput(input),
@@ -142,7 +147,6 @@ class Request {
       integrity = _integrityFromInput(input, init?.integrity),
       isHistoryNavigation = _isHistoryNavigationFromInput(input),
       keepalive = _keepaliveFromInput(input, init?.keepalive),
-      method = _methodFromInput(input, init?.method),
       mode = _modeFromInput(input, init?.mode),
       redirect = _redirectFromInput(input, init?.redirect),
       referrer = _referrerFromInput(input, init?.referrer),
@@ -245,12 +249,24 @@ class Request {
     };
   }
 
-  static Body? _bodyFromInput(_RequestInput input, BodyInit? init) {
-    if (init != null) return Body(init);
-    return switch (input) {
-      _RequestRequestInput(:final value) => value.body?.clone(),
+  static Body? _bodyFromInput(
+    _RequestInput input,
+    BodyInit? init,
+    HttpMethod method,
+  ) {
+    if (init != null) {
+      _validateRequestBodyMethod(method);
+      return Body(init);
+    }
+
+    final body = switch (input) {
+      _RequestRequestInput(:final value) => value.body,
       _ => null,
     };
+    if (body != null) {
+      _validateRequestBodyMethod(method);
+    }
+    return body?.clone();
   }
 
   static RequestCache _cacheFromInput(_RequestInput input, RequestCache? init) {
@@ -319,6 +335,18 @@ class Request {
       _RequestRequestInput(:final value) => value.method,
       _ => HttpMethod.get,
     };
+  }
+
+  static void _validateRequestBodyMethod(HttpMethod method) {
+    if (method.allowsRequestBody) {
+      return;
+    }
+
+    throw ArgumentError.value(
+      method,
+      'method',
+      '${method.value} requests cannot have a body.',
+    );
   }
 
   static RequestMode _modeFromInput(_RequestInput input, RequestMode? init) {

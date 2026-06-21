@@ -88,19 +88,19 @@ void main() {
 
       final bytesRequest = Request(
         'https://example.com/bytes',
-        RequestInit(body: utf8.encode('hello')),
+        RequestInit(method: HttpMethod.post, body: utf8.encode('hello')),
       );
       expect(utf8.decode(await bytesRequest.bytes()), 'hello');
 
       final arrayBufferRequest = Request(
         'https://example.com/array-buffer',
-        RequestInit(body: utf8.encode('hello')),
+        RequestInit(method: HttpMethod.post, body: utf8.encode('hello')),
       );
       expect(utf8.decode(await arrayBufferRequest.arrayBuffer()), 'hello');
 
       final parsedRequest = Request(
         'https://example.com/parsed',
-        RequestInit(body: '{"ok":true}'),
+        RequestInit(method: HttpMethod.post, body: '{"ok":true}'),
       );
       expect(await parsedRequest.json<Map<String, Object?>>(), {'ok': true});
 
@@ -114,6 +114,7 @@ void main() {
       final request = Request(
         'https://example.com/blob',
         RequestInit(
+          method: HttpMethod.post,
           headers: Headers({'content-type': 'application/custom'}),
           body: 'hello',
         ),
@@ -218,11 +219,61 @@ void main() {
     test('clone fails after body has been consumed', () async {
       final request = Request(
         'https://example.com/clone',
-        RequestInit(body: 'used'),
+        RequestInit(method: HttpMethod.post, body: 'used'),
       );
 
       expect(await request.text(), 'used');
       expect(() => request.clone(), throwsStateError);
     });
+
+    test('rejects bodies for methods that cannot carry bodies', () {
+      expect(
+        () => Request('https://example.com', RequestInit(body: 'payload')),
+        throwsArgumentError,
+      );
+      expect(
+        () => Request(
+          'https://example.com',
+          RequestInit(method: HttpMethod.head, body: 'payload'),
+        ),
+        throwsArgumentError,
+      );
+    });
+
+    test('rejects inherited bodies when overriding to bodyless methods', () {
+      final upstream = Request(
+        'https://example.com',
+        RequestInit(method: HttpMethod.post, body: 'payload'),
+      );
+
+      expect(
+        () => Request(upstream, RequestInit(method: HttpMethod.get)),
+        throwsArgumentError,
+      );
+    });
+
+    test(
+      'rejects bodyless overrides before cloning inherited streams',
+      () async {
+        final upstream = Request(
+          'https://example.com',
+          RequestInit(
+            method: HttpMethod.post,
+            body: Stream<List<int>>.fromIterable(<List<int>>[
+              utf8.encode('pay'),
+              utf8.encode('load'),
+            ]),
+          ),
+        );
+
+        expect(
+          () => Request(upstream, RequestInit(method: HttpMethod.get)),
+          throwsArgumentError,
+        );
+
+        expect(upstream.bodyUsed, isFalse);
+        expect(await upstream.text(), 'payload');
+      },
+    );
   });
 }
