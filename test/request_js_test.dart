@@ -48,6 +48,77 @@ void main() {
       expect(request.bodyUsed, isTrue);
     });
 
+    test('sets default content-type for native construction body init', () {
+      final request = Request(
+        'https://example.com/text',
+        native.RequestInit(method: HttpMethod.post, body: 'hello'),
+      );
+
+      expect(request.headers.get('content-type'), 'text/plain;charset=UTF-8');
+    });
+
+    test('clone preserves deleted body-derived content-type', () async {
+      final request = Request(
+        'https://example.com/clone',
+        native.RequestInit(method: HttpMethod.post, body: 'hello'),
+      );
+      expect(request.headers.get('content-type'), 'text/plain;charset=UTF-8');
+
+      request.headers.delete('content-type');
+      final clone = request.clone();
+
+      expect(request.headers.get('content-type'), isNull);
+      expect(clone.headers.get('content-type'), isNull);
+      expect(await request.text(), 'hello');
+      expect(await clone.text(), 'hello');
+    });
+
+    test('clone preserves web host header mutations', () async {
+      final request = Request(
+        web.Request(
+          'https://example.com/web-clone'.toJS,
+          web.RequestInit(
+            method: 'POST',
+            headers:
+                {'content-type': 'text/plain', 'x-id': '1'}.jsify()!
+                    as web.HeadersInit,
+            body: 'hello'.toJS,
+          ),
+        ),
+      );
+      request.headers
+        ..delete('content-type')
+        ..set('x-id', '2');
+
+      final clone = request.clone();
+
+      expect(request.headers.get('content-type'), isNull);
+      expect(request.headers.get('x-id'), '2');
+      expect(clone.headers.get('content-type'), isNull);
+      expect(clone.headers.get('x-id'), '2');
+      expect(await request.text(), 'hello');
+      expect(await clone.text(), 'hello');
+    });
+
+    test('init override preserves deleted body-derived content-type', () async {
+      final request = Request(
+        'https://example.com/rebuild',
+        native.RequestInit(method: HttpMethod.post, body: 'hello'),
+      );
+      request.headers.delete('content-type');
+
+      final rebuilt = Request(
+        request,
+        native.RequestInit(cache: native.RequestCache.noStore),
+      );
+
+      expect(rebuilt.cache, native.RequestCache.noStore);
+      expect(request.headers.get('content-type'), isNull);
+      expect(rebuilt.headers.get('content-type'), isNull);
+      expect(await request.text(), 'hello');
+      expect(await rebuilt.text(), 'hello');
+    });
+
     test('applies init overrides when cloning from wrapped requests', () async {
       final upstream = Request(
         web.Request(

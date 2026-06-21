@@ -134,12 +134,6 @@ class Request {
 
   Request._(_RequestInput input, [RequestInit? init])
     : method = _methodFromInput(input, init?.method),
-      headers = _headersFromInput(input, init?.headers),
-      body = _bodyFromInput(
-        input,
-        init?.body,
-        _methodFromInput(input, init?.method),
-      ),
       cache = _cacheFromInput(input, init?.cache),
       credentials = _credentialsFromInput(input, init?.credentials),
       destination = _destinationFromInput(input),
@@ -151,9 +145,21 @@ class Request {
       redirect = _redirectFromInput(input, init?.redirect),
       referrer = _referrerFromInput(input, init?.referrer),
       referrerPolicy = _referrerPolicyFromInput(input, init?.referrerPolicy),
-      url = _urlFromInput(input);
-  final Headers headers;
-  final Body? body;
+      url = _urlFromInput(input) {
+    final body = _bodyFromInput(input, init?.body, method);
+    final headers = _headersFromInput(input, init?.headers);
+    _headers = init?.body == null
+        ? headers
+        : _headersWithContentTypeFromBody(headers, body);
+    _body = body;
+  }
+  late final Headers _headers;
+  late final Body? _body;
+
+  Headers get headers => _headers;
+
+  Body? get body => _body;
+
   final RequestCache cache;
   final RequestCredentials credentials;
   final String destination;
@@ -223,11 +229,10 @@ class Request {
 
   Request clone() {
     return Request(
-      url,
+      this,
       RequestInit(
         method: method,
         headers: Headers(headers),
-        body: body?.clone(),
         referrer: referrer,
         referrerPolicy: referrerPolicy,
         mode: mode,
@@ -267,6 +272,15 @@ class Request {
       _validateRequestBodyMethod(method);
     }
     return body?.clone();
+  }
+
+  static Headers _headersWithContentTypeFromBody(Headers headers, Body? body) {
+    final contentType = body?.contentType;
+    if (contentType == null || headers.has('content-type')) {
+      return headers;
+    }
+
+    return Headers(headers.entries())..set('content-type', contentType);
   }
 
   static RequestCache _cacheFromInput(_RequestInput input, RequestCache? init) {

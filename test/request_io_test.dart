@@ -6,6 +6,7 @@ import 'dart:io';
 import 'package:ht/src/core/http_method.dart';
 import 'package:ht/src/fetch/request.io.dart' as io_request;
 import 'package:ht/src/fetch/request.native.dart' as native;
+import 'package:ht/src/fetch/url_search_params.dart';
 import 'package:test/test.dart';
 
 void main() {
@@ -19,6 +20,102 @@ void main() {
       );
 
       expect(identical(request.body, request.body), isTrue);
+    });
+
+    test('sets default content-type for native construction body init', () {
+      final textRequest = io_request.Request(
+        'https://example.com/text',
+        native.RequestInit(method: HttpMethod.post, body: 'hello'),
+      );
+      expect(
+        textRequest.headers.get('content-type'),
+        'text/plain;charset=UTF-8',
+      );
+
+      final paramsRequest = io_request.Request(
+        'https://example.com/form',
+        native.RequestInit(
+          method: HttpMethod.post,
+          body: URLSearchParams({'a': '1'}),
+        ),
+      );
+      expect(
+        paramsRequest.headers.get('content-type'),
+        'application/x-www-form-urlencoded;charset=UTF-8',
+      );
+    });
+
+    test('copies raw HttpHeaders before appending body content-type', () async {
+      final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+      addTearDown(server.close);
+      final port = server.port;
+
+      final requestFuture = server.first;
+
+      final client = HttpClient();
+      addTearDown(client.close);
+
+      final clientRequest = await client.post(
+        InternetAddress.loopbackIPv4.host,
+        port,
+        '/headers-copy',
+      );
+      final clientResponseFuture = clientRequest.close();
+
+      final httpRequest = await requestFuture;
+      final request = native.Request(
+        'https://example.com/text',
+        native.RequestInit(
+          method: HttpMethod.post,
+          headers: httpRequest.headers,
+          body: 'hello',
+        ),
+      );
+
+      expect(request.headers.get('content-type'), 'text/plain;charset=UTF-8');
+      expect(httpRequest.headers[HttpHeaders.contentTypeHeader], isNull);
+
+      httpRequest.response
+        ..statusCode = HttpStatus.noContent
+        ..close();
+
+      final clientResponse = await clientResponseFuture;
+      await clientResponse.drain<void>();
+    });
+
+    test('clone preserves deleted body-derived content-type', () async {
+      final request = io_request.Request(
+        'https://example.com/clone',
+        native.RequestInit(method: HttpMethod.post, body: 'hello'),
+      );
+      expect(request.headers.get('content-type'), 'text/plain;charset=UTF-8');
+
+      request.headers.delete('content-type');
+      final clone = request.clone();
+
+      expect(request.headers.get('content-type'), isNull);
+      expect(clone.headers.get('content-type'), isNull);
+      expect(await request.text(), 'hello');
+      expect(await clone.text(), 'hello');
+    });
+
+    test('init override preserves deleted body-derived content-type', () async {
+      final request = io_request.Request(
+        'https://example.com/rebuild',
+        native.RequestInit(method: HttpMethod.post, body: 'hello'),
+      );
+      request.headers.delete('content-type');
+
+      final rebuilt = io_request.Request(
+        request,
+        native.RequestInit(cache: native.RequestCache.noStore),
+      );
+
+      expect(rebuilt.cache, native.RequestCache.noStore);
+      expect(request.headers.get('content-type'), isNull);
+      expect(rebuilt.headers.get('content-type'), isNull);
+      expect(await request.text(), 'hello');
+      expect(await rebuilt.text(), 'hello');
     });
 
     test('applies init overrides when cloning from wrapped requests', () async {
