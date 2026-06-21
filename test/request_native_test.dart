@@ -251,5 +251,29 @@ void main() {
         throwsArgumentError,
       );
     });
+
+    test(
+      'rejects bodyless overrides before cloning inherited streams',
+      () async {
+        final upstream = Request(
+          'https://example.com',
+          RequestInit(
+            method: HttpMethod.post,
+            body: Stream<List<int>>.fromIterable(<List<int>>[
+              utf8.encode('pay'),
+              utf8.encode('load'),
+            ]),
+          ),
+        );
+
+        expect(
+          () => Request(upstream, RequestInit(method: HttpMethod.get)),
+          throwsArgumentError,
+        );
+
+        expect(upstream.bodyUsed, isFalse);
+        expect(await upstream.text(), 'payload');
+      },
+    );
   });
 }

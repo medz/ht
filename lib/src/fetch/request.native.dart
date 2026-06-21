@@ -260,13 +260,13 @@ class Request {
     }
 
     final body = switch (input) {
-      _RequestRequestInput(:final value) => value.body?.clone(),
+      _RequestRequestInput(:final value) => value.body,
       _ => null,
     };
     if (body != null) {
       _validateRequestBodyMethod(method);
     }
-    return body;
+    return body?.clone();
   }
 
   static RequestCache _cacheFromInput(_RequestInput input, RequestCache? init) {
