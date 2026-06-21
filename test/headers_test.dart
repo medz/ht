@@ -23,7 +23,7 @@ void main() {
             .entries()
             .where((entry) => entry.key == 'accept')
             .map((entry) => entry.value),
-        ['application/json', 'text/plain'],
+        ['application/json, text/plain'],
       );
       expect(headers.get('accept'), 'application/json, text/plain');
     });
@@ -64,23 +64,35 @@ void main() {
             .entries()
             .where((entry) => entry.key == 'x-a')
             .map((entry) => entry.value),
-        ['1', '2'],
+        ['1, 2'],
       );
       expect(headers.map((entry) => '${entry.key}:${entry.value}').toList(), [
-        'x-a:1',
-        'x-a:2',
+        'x-a:1, 2',
         'x-b:3',
       ]);
     });
 
-    test('keys and values are normalized and deterministic', () {
+    test('iteration sorts and combines according to Fetch semantics', () {
       final headers = Headers()
-        ..append('X-A', '1')
-        ..append('x-a', '2')
-        ..append('X-B', '3');
+        ..append('X-B', 'b1')
+        ..append('X-A', 'a1')
+        ..append('x-a', 'a2')
+        ..append('Set-Cookie', 's1=1')
+        ..append('set-cookie', 's2=2');
 
-      expect(headers.keys().toList(), ['x-a', 'x-b']);
-      expect(headers.values().toList(), ['1', '2', '3']);
+      expect(headers.map((entry) => '${entry.key}:${entry.value}').toList(), [
+        'set-cookie:s1=1',
+        'set-cookie:s2=2',
+        'x-a:a1, a2',
+        'x-b:b1',
+      ]);
+      expect(headers.keys().toList(), [
+        'set-cookie',
+        'set-cookie',
+        'x-a',
+        'x-b',
+      ]);
+      expect(headers.values().toList(), ['s1=1', 's2=2', 'a1, a2', 'b1']);
     });
 
     test('delete removes all values', () {

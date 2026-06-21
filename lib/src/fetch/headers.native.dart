@@ -68,7 +68,7 @@ class Headers with Iterable<MapEntry<String, String>> {
   final List<MapEntry<String, String>> _host;
 
   @override
-  Iterator<MapEntry<String, String>> get iterator => _host.iterator;
+  Iterator<MapEntry<String, String>> get iterator => entries().iterator;
 
   void append(String name, String value) {
     _host.add(
@@ -84,7 +84,21 @@ class Headers with Iterable<MapEntry<String, String>> {
     _host.removeWhere((entry) => entry.key == normalizedName);
   }
 
-  Iterable<MapEntry<String, String>> entries() => _host;
+  Iterable<MapEntry<String, String>> entries() sync* {
+    final names = _host.map((entry) => entry.key).toSet().toList()..sort();
+    for (final name in names) {
+      final values = _host
+          .where((entry) => entry.key == name)
+          .map((entry) => entry.value);
+      if (name == 'set-cookie') {
+        for (final value in values) {
+          yield MapEntry(name, value);
+        }
+      } else {
+        yield MapEntry(name, values.join(', '));
+      }
+    }
+  }
 
   String? get(String name) {
     final normalizedName = _normalizeAndValidateName(name);
@@ -116,14 +130,9 @@ class Headers with Iterable<MapEntry<String, String>> {
     return _host.any((entry) => entry.key == normalizedName);
   }
 
-  Iterable<String> keys() {
-    final seen = <String>{};
-    return _host.map((entry) => entry.key).where(seen.add);
-  }
+  Iterable<String> keys() => entries().map((entry) => entry.key);
 
-  Iterable<String> values() {
-    return _host.map((entry) => entry.value);
-  }
+  Iterable<String> values() => entries().map((entry) => entry.value);
 
   static String _normalizeAndValidateName(String name) {
     final normalized = name.trim().toLowerCase();
