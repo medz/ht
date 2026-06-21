@@ -19,5 +19,10 @@ void main() {
       expect(wrapped.size, 3);
       expect(wrapped.toString(), 'a=1&a=2&b=3');
     });
+
+    test('sort keeps duplicate names in relative order', () {
+      final params = URLSearchParams('b=1&a=first&a=second&b=2')..sort();
+      expect(params.toString(), 'a=first&a=second&b=1&b=2');
+    });
   });
 }

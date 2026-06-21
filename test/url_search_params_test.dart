@@ -31,6 +31,11 @@ void main() {
       expect(params.toString(), 'a=2&z=1');
     });
 
+    test('sort keeps duplicate names in relative order', () {
+      final params = URLSearchParams('b=1&a=first&a=second&b=2')..sort();
+      expect(params.toString(), 'a=first&a=second&b=1&b=2');
+    });
+
     test('supports map and entry-list construction', () {
       final byMap = URLSearchParams({'a': '1', 'b': '2'});
       expect(byMap.toString(), 'a=1&b=2');
