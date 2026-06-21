@@ -96,7 +96,19 @@ class URLSearchParams with Iterable<MapEntry<String, String>> {
   }
 
   void sort() {
-    _entries.sort((a, b) => a.key.compareTo(b.key));
+    final indexedEntries =
+        [
+          for (var index = 0; index < _entries.length; index++)
+            (index: index, entry: _entries[index]),
+        ]..sort((a, b) {
+          final byName = a.entry.key.compareTo(b.entry.key);
+          if (byName != 0) return byName;
+          return a.index.compareTo(b.index);
+        });
+
+    _entries
+      ..clear()
+      ..addAll(indexedEntries.map((item) => item.entry));
   }
 
   Iterable<String> values() sync* {
