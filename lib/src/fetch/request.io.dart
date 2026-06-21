@@ -282,7 +282,7 @@ class Request implements native.Request {
       native.RequestInit(
         method: method,
         headers: init?.headers ?? io_headers.Headers(request.headers),
-        body: init?.body ?? body?.clone(),
+        body: init?.body ?? body,
         referrer: init?.referrer ?? request.referrer,
         referrerPolicy: init?.referrerPolicy ?? request.referrerPolicy,
         mode: init?.mode ?? request.mode,

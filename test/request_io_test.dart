@@ -156,6 +156,9 @@ void main() {
           throwsArgumentError,
         );
 
+        expect(upstream.bodyUsed, isFalse);
+        expect(await upstream.text(), 'payload');
+
         httpRequest.response
           ..statusCode = HttpStatus.noContent
           ..close();
