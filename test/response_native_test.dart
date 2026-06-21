@@ -5,6 +5,7 @@ import 'package:ht/src/fetch/blob.dart';
 import 'package:ht/src/fetch/form_data.native.dart';
 import 'package:ht/src/fetch/headers.dart';
 import 'package:ht/src/fetch/response.native.dart';
+import 'package:ht/src/fetch/url_search_params.dart';
 import 'package:test/test.dart';
 
 void main() {
@@ -162,6 +163,53 @@ void main() {
       final blob = await response.blob();
       expect(blob.type, 'application/custom');
       expect(await blob.text(), 'hello');
+    });
+
+    test('sets default content-type from body init', () async {
+      final textResponse = Response('hello');
+      expect(
+        textResponse.headers.get('content-type'),
+        'text/plain;charset=UTF-8',
+      );
+
+      final paramsResponse = Response(URLSearchParams({'a': '1', 'b': '2'}));
+      expect(
+        paramsResponse.headers.get('content-type'),
+        'application/x-www-form-urlencoded;charset=UTF-8',
+      );
+
+      final blobResponse = Response(Blob(<BlobPart>['hello'], 'text/plain'));
+      expect(blobResponse.headers.get('content-type'), 'text/plain');
+
+      final emptyBlobResponse = Response(Blob(<BlobPart>['hello']));
+      expect(emptyBlobResponse.headers.get('content-type'), isNull);
+
+      final formResponse = Response(
+        FormData()..append('name', Multipart.text('alice')),
+      );
+      expect(
+        formResponse.headers.get('content-type'),
+        startsWith('multipart/form-data; boundary='),
+      );
+      final formData = await formResponse.formData();
+      expect((formData.get('name')! as TextMultipart).value, 'alice');
+
+      final bytesResponse = Response(utf8.encode('hello'));
+      expect(bytesResponse.headers.get('content-type'), isNull);
+
+      final streamResponse = Response(
+        Stream<List<int>>.value(utf8.encode('hello')),
+      );
+      expect(streamResponse.headers.get('content-type'), isNull);
+    });
+
+    test('preserves explicit content-type over body defaults', () {
+      final response = Response(
+        'hello',
+        ResponseInit(headers: Headers({'content-type': 'application/custom'})),
+      );
+
+      expect(response.headers.get('content-type'), 'application/custom');
     });
 
     test(

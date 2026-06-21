@@ -5,6 +5,7 @@ import 'dart:io' as io;
 
 import 'package:ht/src/fetch/response.io.dart';
 import 'package:ht/src/fetch/response.native.dart' as native;
+import 'package:ht/src/fetch/url_search_params.dart';
 import 'package:test/test.dart';
 
 void main() {
@@ -18,6 +19,20 @@ void main() {
       expect(clone.type, native.ResponseType.error);
       expect(clone.status, 0);
       expect(clone.ok, isFalse);
+    });
+
+    test('sets default content-type for native construction body init', () {
+      final textResponse = Response('hello');
+      expect(
+        textResponse.headers.get('content-type'),
+        'text/plain;charset=UTF-8',
+      );
+
+      final paramsResponse = Response(URLSearchParams({'a': '1'}));
+      expect(
+        paramsResponse.headers.get('content-type'),
+        'application/x-www-form-urlencoded;charset=UTF-8',
+      );
     });
 
     test('enforces native constructor invariants', () {

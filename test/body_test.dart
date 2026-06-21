@@ -4,6 +4,7 @@ import 'dart:typed_data';
 
 import 'package:block/block.dart' as block;
 import 'package:ht/src/fetch/body.dart';
+import 'package:ht/src/fetch/form_data.native.dart';
 import 'package:ht/src/fetch/url_search_params.dart';
 import 'package:test/test.dart';
 
@@ -34,6 +35,26 @@ void main() {
       expect(await body.text(), 'a=1&b=2');
     });
 
+    test('exposes body-derived content type', () {
+      final params = URLSearchParams({'a': '1'});
+      final formData = FormData()..append('a', Multipart.text('1'));
+
+      expect(Body('hello').contentType, 'text/plain;charset=UTF-8');
+      expect(
+        Body(params).contentType,
+        'application/x-www-form-urlencoded;charset=UTF-8',
+      );
+      expect(
+        Body(block.Block(<Object>['x'], type: 'text/plain')).contentType,
+        'text/plain',
+      );
+      expect(
+        Body(formData).contentType,
+        startsWith('multipart/form-data; boundary='),
+      );
+      expect(Body([1, 2, 3]).contentType, isNull);
+    });
+
     test('block bodies can be converted back to Blob', () async {
       final body = Body(block.Block(<Object>['payload'], type: 'text/plain'));
       final blob = await body.blob();
@@ -41,6 +62,12 @@ void main() {
       expect(blob.type, 'text/plain');
       expect(await blob.text(), 'payload');
       expect(body.bodyUsed, isTrue);
+    });
+
+    test('list byte bodies decode as bytes', () async {
+      final body = Body([1, 2, 3]);
+
+      expect(await body.bytes(), [1, 2, 3]);
     });
 
     test('clone tees unread stream bodies', () async {

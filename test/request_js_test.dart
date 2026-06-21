@@ -48,6 +48,15 @@ void main() {
       expect(request.bodyUsed, isTrue);
     });
 
+    test('sets default content-type for native construction body init', () {
+      final request = Request(
+        'https://example.com/text',
+        native.RequestInit(method: HttpMethod.post, body: 'hello'),
+      );
+
+      expect(request.headers.get('content-type'), 'text/plain;charset=UTF-8');
+    });
+
     test('applies init overrides when cloning from wrapped requests', () async {
       final upstream = Request(
         web.Request(

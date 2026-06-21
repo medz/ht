@@ -5,6 +5,7 @@ import 'package:ht/src/fetch/blob.dart';
 import 'package:ht/src/fetch/form_data.native.dart';
 import 'package:ht/src/fetch/headers.dart';
 import 'package:ht/src/fetch/request.native.dart';
+import 'package:ht/src/fetch/url_search_params.dart';
 import 'package:test/test.dart';
 
 void main() {
@@ -123,6 +124,86 @@ void main() {
       final blob = await request.blob();
       expect(blob.type, 'application/custom');
       expect(await blob.text(), 'hello');
+    });
+
+    test('sets default content-type from body init', () async {
+      final textRequest = Request(
+        'https://example.com/text',
+        RequestInit(method: HttpMethod.post, body: 'hello'),
+      );
+      expect(
+        textRequest.headers.get('content-type'),
+        'text/plain;charset=UTF-8',
+      );
+
+      final paramsRequest = Request(
+        'https://example.com/form',
+        RequestInit(
+          method: HttpMethod.post,
+          body: URLSearchParams({'a': '1', 'b': '2'}),
+        ),
+      );
+      expect(
+        paramsRequest.headers.get('content-type'),
+        'application/x-www-form-urlencoded;charset=UTF-8',
+      );
+
+      final blobRequest = Request(
+        'https://example.com/blob',
+        RequestInit(
+          method: HttpMethod.post,
+          body: Blob(<BlobPart>['hello'], 'text/plain'),
+        ),
+      );
+      expect(blobRequest.headers.get('content-type'), 'text/plain');
+
+      final emptyBlobRequest = Request(
+        'https://example.com/blob',
+        RequestInit(method: HttpMethod.post, body: Blob(<BlobPart>['hello'])),
+      );
+      expect(emptyBlobRequest.headers.get('content-type'), isNull);
+
+      final formRequest = Request(
+        'https://example.com/multipart',
+        RequestInit(
+          method: HttpMethod.post,
+          body: FormData()..append('name', Multipart.text('alice')),
+        ),
+      );
+      expect(
+        formRequest.headers.get('content-type'),
+        startsWith('multipart/form-data; boundary='),
+      );
+      final formData = await formRequest.formData();
+      expect((formData.get('name')! as TextMultipart).value, 'alice');
+
+      final bytesRequest = Request(
+        'https://example.com/bytes',
+        RequestInit(method: HttpMethod.post, body: utf8.encode('hello')),
+      );
+      expect(bytesRequest.headers.get('content-type'), isNull);
+
+      final streamRequest = Request(
+        'https://example.com/stream',
+        RequestInit(
+          method: HttpMethod.post,
+          body: Stream<List<int>>.value(utf8.encode('hello')),
+        ),
+      );
+      expect(streamRequest.headers.get('content-type'), isNull);
+    });
+
+    test('preserves explicit content-type over body defaults', () {
+      final request = Request(
+        'https://example.com/text',
+        RequestInit(
+          method: HttpMethod.post,
+          headers: Headers({'content-type': 'application/custom'}),
+          body: 'hello',
+        ),
+      );
+
+      expect(request.headers.get('content-type'), 'application/custom');
     });
 
     test(

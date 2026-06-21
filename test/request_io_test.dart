@@ -6,6 +6,7 @@ import 'dart:io';
 import 'package:ht/src/core/http_method.dart';
 import 'package:ht/src/fetch/request.io.dart' as io_request;
 import 'package:ht/src/fetch/request.native.dart' as native;
+import 'package:ht/src/fetch/url_search_params.dart';
 import 'package:test/test.dart';
 
 void main() {
@@ -19,6 +20,29 @@ void main() {
       );
 
       expect(identical(request.body, request.body), isTrue);
+    });
+
+    test('sets default content-type for native construction body init', () {
+      final textRequest = io_request.Request(
+        'https://example.com/text',
+        native.RequestInit(method: HttpMethod.post, body: 'hello'),
+      );
+      expect(
+        textRequest.headers.get('content-type'),
+        'text/plain;charset=UTF-8',
+      );
+
+      final paramsRequest = io_request.Request(
+        'https://example.com/form',
+        native.RequestInit(
+          method: HttpMethod.post,
+          body: URLSearchParams({'a': '1'}),
+        ),
+      );
+      expect(
+        paramsRequest.headers.get('content-type'),
+        'application/x-www-form-urlencoded;charset=UTF-8',
+      );
     });
 
     test('applies init overrides when cloning from wrapped requests', () async {

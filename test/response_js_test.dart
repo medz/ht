@@ -36,6 +36,12 @@ void main() {
       expect(response.bodyUsed, isTrue);
     });
 
+    test('sets default content-type for native construction body init', () {
+      final response = Response('hello');
+
+      expect(response.headers.get('content-type'), 'text/plain;charset=UTF-8');
+    });
+
     test('clone tees a wrapped web.Response body', () async {
       final upstream = web.Response('cloned body'.toJS);
 
