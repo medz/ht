@@ -75,9 +75,11 @@ class Headers
   String? get(String name) {
     switch (_host) {
       case final HttpHeadersHost host:
-        return name.toLowerCase() == 'set-cookie'
-            ? null
-            : host.value.value(name);
+        final normalizedName = _normalizeName(name);
+        if (normalizedName == 'set-cookie') return null;
+
+        final values = host.value[normalizedName];
+        return values == null || values.isEmpty ? null : values.join(', ');
       case final NativeHeadersHost host:
         return host.value.get(name);
     }
@@ -107,7 +109,8 @@ class Headers
   bool has(String name) {
     switch (_host) {
       case final HttpHeadersHost host:
-        return host.value.value(name) != null;
+        final values = host.value[_normalizeName(name)];
+        return values != null && values.isNotEmpty;
       case final NativeHeadersHost host:
         return host.value.has(name);
     }
@@ -140,4 +143,6 @@ class Headers
         yield* host.value.values();
     }
   }
+
+  static String _normalizeName(String name) => name.trim().toLowerCase();
 }
