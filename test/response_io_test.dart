@@ -20,6 +20,20 @@ void main() {
       expect(clone.ok, isFalse);
     });
 
+    test('enforces native constructor invariants', () {
+      expect(
+        () => Response(null, const native.ResponseInit(status: 199)),
+        throwsRangeError,
+      );
+      expect(
+        () => Response(
+          'payload',
+          const native.ResponseInit(status: io.HttpStatus.noContent),
+        ),
+        throwsArgumentError,
+      );
+    });
+
     test(
       'wraps HttpClientResponse without copying headers or body eagerly',
       () async {

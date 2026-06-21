@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:ht/src/core/http_status.dart';
 import 'package:ht/src/fetch/blob.dart';
 import 'package:ht/src/fetch/form_data.native.dart';
 import 'package:ht/src/fetch/headers.dart';
@@ -61,6 +62,53 @@ void main() {
       expect(response.ok, isTrue);
       expect(response.headers.get('x-id'), '1');
       expect(await response.text(), 'payload');
+    });
+
+    test('rejects constructor statuses outside the Fetch range', () {
+      expect(
+        () => Response(null, const ResponseInit(status: 199)),
+        throwsRangeError,
+      );
+      expect(
+        () => Response(null, const ResponseInit(status: 600)),
+        throwsRangeError,
+      );
+      expect(
+        () => Response(null, const ResponseInit(status: 200)),
+        returnsNormally,
+      );
+      expect(
+        () => Response(null, const ResponseInit(status: 599)),
+        returnsNormally,
+      );
+    });
+
+    test('rejects bodies for null-body statuses', () {
+      expect(
+        () => Response(null, const ResponseInit(status: HttpStatus.noContent)),
+        returnsNormally,
+      );
+      expect(
+        () => Response(
+          'payload',
+          const ResponseInit(status: HttpStatus.noContent),
+        ),
+        throwsArgumentError,
+      );
+      expect(
+        () => Response(
+          'payload',
+          const ResponseInit(status: HttpStatus.resetContent),
+        ),
+        throwsArgumentError,
+      );
+      expect(
+        () => Response(
+          'payload',
+          const ResponseInit(status: HttpStatus.notModified),
+        ),
+        throwsArgumentError,
+      );
     });
 
     test('json factory encodes payload and sets content-type', () async {

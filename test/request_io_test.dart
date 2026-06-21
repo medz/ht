@@ -14,7 +14,7 @@ void main() {
       final request = io_request.Request(
         native.Request(
           'https://example.com',
-          native.RequestInit(body: 'payload'),
+          native.RequestInit(method: HttpMethod.post, body: 'payload'),
         ),
       );
 
@@ -120,6 +120,16 @@ void main() {
         expect(rebuilt.bodyUsed, isTrue);
       },
     );
+
+    test('rejects native construction bodies for bodyless methods', () {
+      expect(
+        () => io_request.Request(
+          'https://example.com',
+          native.RequestInit(method: HttpMethod.head, body: 'payload'),
+        ),
+        throwsArgumentError,
+      );
+    });
 
     test('wraps HttpRequest without copying headers or body eagerly', () async {
       final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
