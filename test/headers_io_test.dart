@@ -8,6 +8,14 @@ import 'package:test/test.dart';
 
 void main() {
   group('Headers (io)', () {
+    test('constructor from Headers creates independent copy', () {
+      final original = Headers({'x-test': '1'});
+      final copy = Headers(original)..set('x-test', '2');
+
+      expect(original.get('x-test'), '1');
+      expect(copy.get('x-test'), '2');
+    });
+
     test('joins repeated values from dart:io HttpHeaders hosts', () async {
       final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
       final client = HttpClient();

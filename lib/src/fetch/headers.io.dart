@@ -21,13 +21,13 @@ class Headers
   const Headers._(this._host);
 
   factory Headers([native.HeadersInit? init]) {
-    final host = switch (init) {
-      final Headers headers => headers._host,
+    return Headers._(switch (init) {
+      final Headers headers => NativeHeadersHost(
+        native.Headers(headers.entries()),
+      ),
       final HttpHeaders headers => HttpHeadersHost(headers),
       _ => NativeHeadersHost(native.Headers(init)),
-    };
-
-    return Headers._(host);
+    });
   }
 
   final HeadersHost _host;
