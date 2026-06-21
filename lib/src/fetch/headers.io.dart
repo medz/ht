@@ -59,13 +59,7 @@ class Headers
   Iterable<MapEntry<String, String>> entries() sync* {
     switch (_host) {
       case final HttpHeadersHost host:
-        final entries = <MapEntry<String, String>>[];
-        host.value.forEach((name, values) {
-          for (final value in values) {
-            entries.add(MapEntry(name, value));
-          }
-        });
-        yield* entries;
+        yield* native.Headers(_httpHeaderEntries(host.value)).entries();
       case final NativeHeadersHost host:
         yield* host.value.entries();
     }
@@ -119,12 +113,8 @@ class Headers
   @override
   Iterable<String> keys() sync* {
     switch (_host) {
-      case final HttpHeadersHost host:
-        final keys = <String>[];
-        host.value.forEach((name, values) {
-          keys.add(name);
-        });
-        yield* keys;
+      case HttpHeadersHost():
+        yield* entries().map((entry) => entry.key);
       case final NativeHeadersHost host:
         yield* host.value.keys();
     }
@@ -133,15 +123,23 @@ class Headers
   @override
   Iterable<String> values() sync* {
     switch (_host) {
-      case final HttpHeadersHost host:
-        final values = <String>[];
-        host.value.forEach((name, entries) {
-          values.addAll(entries);
-        });
-        yield* values;
+      case HttpHeadersHost():
+        yield* entries().map((entry) => entry.value);
       case final NativeHeadersHost host:
         yield* host.value.values();
     }
+  }
+
+  static Iterable<MapEntry<String, String>> _httpHeaderEntries(
+    HttpHeaders headers,
+  ) {
+    final entries = <MapEntry<String, String>>[];
+    headers.forEach((name, values) {
+      for (final value in values) {
+        entries.add(MapEntry(name, value));
+      }
+    });
+    return entries;
   }
 
   static String _normalizeName(String name) => name.trim().toLowerCase();
