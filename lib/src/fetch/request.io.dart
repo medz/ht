@@ -281,16 +281,11 @@ class Request implements native.Request {
     native.RequestInit? init,
   ) {
     final method = init?.method ?? request.method;
-    final body = init?.body == null
-        ? _bodyFromWrappedRequest(request, method)
-        : null;
-
-    return native.Request(
-      request.url,
-      native.RequestInit(
+    native.RequestInit requestInit({BodyInit? body}) {
+      return native.RequestInit(
         method: method,
         headers: init?.headers ?? io_headers.Headers(request.headers),
-        body: init?.body ?? body,
+        body: body,
         referrer: init?.referrer ?? request.referrer,
         referrerPolicy: init?.referrerPolicy ?? request.referrerPolicy,
         mode: init?.mode ?? request.mode,
@@ -300,8 +295,23 @@ class Request implements native.Request {
         integrity: init?.integrity ?? request.integrity,
         keepalive: init?.keepalive ?? request.keepalive,
         duplex: init?.duplex ?? request.duplex,
-      ),
-    );
+      );
+    }
+
+    if (init?.body == null) {
+      switch (request._host) {
+        case final NativeRequestHost host:
+          return native.Request(host.value, requestInit());
+        case HttpRequestHost():
+          break;
+      }
+    }
+
+    final body = init?.body == null
+        ? _bodyFromWrappedRequest(request, method)
+        : null;
+
+    return native.Request(request.url, requestInit(body: init?.body ?? body));
   }
 
   static Body? _bodyFromWrappedRequest(Request request, HttpMethod method) {

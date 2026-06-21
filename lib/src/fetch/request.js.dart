@@ -315,14 +315,12 @@ class Request implements native.Request {
     Request request,
     native.RequestInit? init,
   ) {
-    final body = init?.body == null ? request.body : null;
-
-    return native.Request(
-      request.url,
-      native.RequestInit(
-        method: init?.method ?? request.method,
+    final method = init?.method ?? request.method;
+    native.RequestInit requestInit({BodyInit? body}) {
+      return native.RequestInit(
+        method: method,
         headers: init?.headers ?? js_headers.Headers(request.headers),
-        body: init?.body ?? body?.clone(),
+        body: body,
         referrer: init?.referrer ?? request.referrer,
         referrerPolicy: init?.referrerPolicy ?? request.referrerPolicy,
         mode: init?.mode ?? request.mode,
@@ -332,7 +330,23 @@ class Request implements native.Request {
         integrity: init?.integrity ?? request.integrity,
         keepalive: init?.keepalive ?? request.keepalive,
         duplex: init?.duplex ?? request.duplex,
-      ),
+      );
+    }
+
+    if (init?.body == null) {
+      switch (request._host) {
+        case final NativeRequestHost host:
+          return native.Request(host.value, requestInit());
+        case WebRequestHost():
+          break;
+      }
+    }
+
+    final body = init?.body == null ? request.body : null;
+
+    return native.Request(
+      request.url,
+      requestInit(body: init?.body ?? body?.clone()),
     );
   }
 

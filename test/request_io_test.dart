@@ -99,6 +99,25 @@ void main() {
       expect(await clone.text(), 'hello');
     });
 
+    test('init override preserves deleted body-derived content-type', () async {
+      final request = io_request.Request(
+        'https://example.com/rebuild',
+        native.RequestInit(method: HttpMethod.post, body: 'hello'),
+      );
+      request.headers.delete('content-type');
+
+      final rebuilt = io_request.Request(
+        request,
+        native.RequestInit(cache: native.RequestCache.noStore),
+      );
+
+      expect(rebuilt.cache, native.RequestCache.noStore);
+      expect(request.headers.get('content-type'), isNull);
+      expect(rebuilt.headers.get('content-type'), isNull);
+      expect(await request.text(), 'hello');
+      expect(await rebuilt.text(), 'hello');
+    });
+
     test('applies init overrides when cloning from wrapped requests', () async {
       final upstream = io_request.Request(
         native.Request(
