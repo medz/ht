@@ -1,5 +1,10 @@
 ## Next
 
+## 0.4.1
+
+- Fixed `dart:io` `Headers(existingHeaders)` construction so it copies header
+  entries instead of aliasing the source `Headers` host.
+
 ## 0.4.0
 
 - Hardened native `FormData.parse()` `multipart/form-data` parsing for real
