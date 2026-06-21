@@ -228,6 +228,29 @@ void main() {
       );
     });
 
+    test('keeps closing-boundary-like bytes inside binary payloads', () async {
+      const boundary = 'closing-like-boundary';
+      final formData = await FormData.parse(
+        _bodyBytes([
+          '--$boundary\r\n'
+              'Content-Disposition: form-data; name="file"; filename="a.bin"\r\n'
+              'Content-Type: application/octet-stream\r\n'
+              '\r\n'
+              'before\r\n'
+              '--$boundary--not-a-delimiter\r\n'
+              'after\r\n'
+              '--$boundary--\r\n',
+        ]),
+        contentType: 'multipart/form-data; boundary=$boundary',
+      );
+
+      final file = formData.get('file')! as BlobMultipart;
+      expect(
+        await file.text(),
+        'before\r\n--$boundary--not-a-delimiter\r\nafter',
+      );
+    });
+
     test('parses multipart bodies across stream chunk boundaries', () async {
       const boundary = 'stream-boundary';
       final formData = await FormData.parse(

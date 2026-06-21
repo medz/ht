@@ -674,6 +674,8 @@ class FormData with Iterable<MapEntry<String, Multipart>> {
 
 enum _MultipartParseState { firstBoundary, headers, content, closed }
 
+enum _BoundaryLineEnd { valid, needMore, invalid }
+
 final class _MultipartStreamParser {
   _MultipartStreamParser(this._body, String boundary)
     : _boundaryMarker = utf8.encode('--$boundary'),
@@ -694,6 +696,7 @@ final class _MultipartStreamParser {
   Map<String, String>? _partHeaders;
   _ContentDisposition? _partDisposition;
   List<Uint8List>? _partChunks;
+  var _streamDone = false;
 
   Future<FormData> parse() async {
     await for (final chunk in _body) {
@@ -705,6 +708,7 @@ final class _MultipartStreamParser {
       _drain();
     }
 
+    _streamDone = true;
     _finish();
     return _formData;
   }
@@ -856,10 +860,20 @@ final class _MultipartStreamParser {
     }
 
     if (FormData._matches(_buffer, afterMarker, FormData._dashDash)) {
+      final closingEnd = afterMarker + FormData._dashDash.length;
+      switch (_probeBoundaryLineEnd(closingEnd)) {
+        case _BoundaryLineEnd.needMore:
+          return const _BoundaryProbe.needMore();
+        case _BoundaryLineEnd.invalid:
+          return const _BoundaryProbe.invalid();
+        case _BoundaryLineEnd.valid:
+          break;
+      }
+
       return _BoundaryProbe.match(
         _BoundaryMatch(
           lineStart: lineStart,
-          afterMarker: afterMarker + FormData._dashDash.length,
+          afterMarker: closingEnd,
           closing: true,
         ),
       );
@@ -876,6 +890,26 @@ final class _MultipartStreamParser {
     }
 
     return const _BoundaryProbe.invalid();
+  }
+
+  _BoundaryLineEnd _probeBoundaryLineEnd(int offset) {
+    final available = _buffer.length - offset;
+    if (available == 0) {
+      return _streamDone ? _BoundaryLineEnd.valid : _BoundaryLineEnd.needMore;
+    }
+
+    if (available == 1) {
+      if (_buffer[offset] == FormData._crlf.first && !_streamDone) {
+        return _BoundaryLineEnd.needMore;
+      }
+      return _BoundaryLineEnd.invalid;
+    }
+
+    if (FormData._matches(_buffer, offset, FormData._crlf)) {
+      return _BoundaryLineEnd.valid;
+    }
+
+    return _BoundaryLineEnd.invalid;
   }
 
   bool _couldMatchAt(int start, List<int> needle) {
