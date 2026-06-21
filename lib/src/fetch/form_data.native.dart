@@ -692,6 +692,11 @@ final class _MultipartStreamParser {
   final _buffer = <int>[];
   final _formData = FormData();
 
+  int get _boundaryTailRetain =>
+      _prefixedBoundaryMarker.length +
+      FormData._dashDash.length +
+      FormData._crlf.length;
+
   var _state = _MultipartParseState.firstBoundary;
   Map<String, String>? _partHeaders;
   _ContentDisposition? _partDisposition;
@@ -936,18 +941,16 @@ final class _MultipartStreamParser {
   }
 
   void _flushSafeContentPrefix() {
-    final retain = _prefixedBoundaryMarker.length + FormData._dashDash.length;
-    if (_buffer.length <= retain) return;
+    if (_buffer.length <= _boundaryTailRetain) return;
 
-    final end = _buffer.length - retain;
+    final end = _buffer.length - _boundaryTailRetain;
     _addContentChunk(0, end);
     _consume(end);
   }
 
   void _discardSafePreamblePrefix() {
-    final retain = _prefixedBoundaryMarker.length + FormData._dashDash.length;
-    if (_buffer.length <= retain) return;
-    _consume(_buffer.length - retain);
+    if (_buffer.length <= _boundaryTailRetain) return;
+    _consume(_buffer.length - _boundaryTailRetain);
   }
 
   void _addContentChunk(int start, int end) {

@@ -280,6 +280,23 @@ void main() {
       expect(await file.text(), 'payload');
     });
 
+    test('parses closing boundaries split after trailing CR', () async {
+      const boundary = 'split-closing-boundary';
+      final formData = await FormData.parse(
+        _bodyChunks([
+          '--$boundary\r\n'
+              'Content-Disposition: form-data; name="file"; filename="a.txt"\r\n'
+              'Content-Type: text/plain\r\n'
+              '\r\npayload\r\n--$boundary--\r',
+          '\n',
+        ]),
+        contentType: 'multipart/form-data; boundary=$boundary',
+      );
+
+      final file = formData.get('file')! as BlobMultipart;
+      expect(await file.text(), 'payload');
+    });
+
     test('parses RFC 5987 filename star parameters', () async {
       const boundary = 'filename-star-boundary';
       final formData = await FormData.parse(
