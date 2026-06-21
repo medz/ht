@@ -23,8 +23,8 @@ import 'url_search_params.dart';
 /// - [FormData]
 /// - [URLSearchParams]
 ///
-/// Platform-specific extensions:
-/// - `dart:io File` on io
+/// On IO, `dart:io File` values are supported as [Blob] parts. Wrap files in a
+/// [Blob] before passing them as [BodyInit], for example `Body(Blob([file]))`.
 ///
 /// Native bodies normalize supported inputs into a detached [block.Block]
 /// when possible. Platform implementations may accept additional host-backed

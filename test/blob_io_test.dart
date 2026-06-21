@@ -4,6 +4,7 @@ library;
 import 'dart:convert';
 import 'dart:io' as io;
 
+import 'package:ht/src/fetch/body.dart';
 import 'package:ht/src/fetch/blob.io.dart' as io_blob;
 import 'package:test/test.dart';
 
@@ -26,6 +27,25 @@ void main() {
       expect(blob.type, 'text/plain');
       expect(await blob.text(), 'hello world');
     });
+
+    test(
+      'works as a BodyInit value after wrapping dart:io File parts',
+      () async {
+        final tempDir = await io.Directory.systemTemp.createTemp('ht_blob_io_');
+        addTearDown(() async {
+          if (await tempDir.exists()) {
+            await tempDir.delete(recursive: true);
+          }
+        });
+
+        final file = io.File('${tempDir.path}/payload.txt');
+        await file.writeAsString('hello body');
+
+        final body = Body(io_blob.Blob([file], 'text/plain'));
+
+        expect(await body.text(), 'hello body');
+      },
+    );
 
     test('slice reads the requested file range', () async {
       final tempDir = await io.Directory.systemTemp.createTemp('ht_blob_io_');
