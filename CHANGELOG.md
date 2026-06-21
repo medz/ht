@@ -1,5 +1,12 @@
 ## Next
 
+## 0.3.2
+
+- Fixed default `FormData.encodeMultipart()` boundary generation on js
+  runtimes by avoiding `Random.secure()`, which is unavailable under the Dart
+  Node test platform.
+- Expanded CI test coverage to run the full test suite on VM, Node, and Chrome.
+
 ## 0.3.1
 
 - Fixed the broken `Request` constructor implementation shipped in `0.3.0`,
