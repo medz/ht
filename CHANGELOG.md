@@ -1,5 +1,11 @@
 ## Next
 
+## 0.4.2
+
+- Aligned native and `dart:io` `Headers` iteration with Fetch semantics so
+  repeated non-`set-cookie` headers are combined while repeated `set-cookie`
+  values remain separate.
+
 ## 0.4.1
 
 - Fixed `dart:io` `Headers(existingHeaders)` construction so it copies header
