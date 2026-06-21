@@ -228,7 +228,8 @@ class Request implements native.Request {
 
   @override
   Request clone() {
-    final body = this.body;
+    final method = this.method;
+    final body = method.allowsRequestBody ? this.body : null;
     return Request(
       native.Request(
         url,
@@ -271,12 +272,15 @@ class Request implements native.Request {
     Request request,
     native.RequestInit? init,
   ) {
-    final body = init?.body == null ? request.body : null;
+    final method = init?.method ?? request.method;
+    final body = init?.body == null
+        ? _bodyFromWrappedRequest(request, method)
+        : null;
 
     return native.Request(
       request.url,
       native.RequestInit(
-        method: init?.method ?? request.method,
+        method: method,
         headers: init?.headers ?? io_headers.Headers(request.headers),
         body: init?.body ?? body?.clone(),
         referrer: init?.referrer ?? request.referrer,
@@ -290,5 +294,15 @@ class Request implements native.Request {
         duplex: init?.duplex ?? request.duplex,
       ),
     );
+  }
+
+  static Body? _bodyFromWrappedRequest(Request request, HttpMethod method) {
+    if (!method.allowsRequestBody &&
+        request._host is HttpRequestHost &&
+        !request.method.allowsRequestBody) {
+      return null;
+    }
+
+    return request.body;
   }
 }
