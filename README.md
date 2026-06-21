@@ -65,6 +65,22 @@ Future<void> main() async {
 - Reading the same instance again throws `StateError`
 - Use `clone()` when multiple reads are required
 
+On IO, `dart:io` files are supported through `Blob` parts before becoming a
+body:
+
+```dart
+import 'dart:io' as io;
+
+import 'package:ht/ht.dart';
+
+Future<void> main() async {
+  final file = io.File('payload.txt');
+  final body = Body(Blob(<Object>[file], 'text/plain'));
+
+  print(await body.text());
+}
+```
+
 ## FormData Example
 
 ```dart
