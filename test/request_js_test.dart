@@ -73,6 +73,33 @@ void main() {
       expect(await clone.text(), 'hello');
     });
 
+    test('clone preserves web host header mutations', () async {
+      final request = Request(
+        web.Request(
+          'https://example.com/web-clone'.toJS,
+          web.RequestInit(
+            method: 'POST',
+            headers:
+                {'content-type': 'text/plain', 'x-id': '1'}.jsify()!
+                    as web.HeadersInit,
+            body: 'hello'.toJS,
+          ),
+        ),
+      );
+      request.headers
+        ..delete('content-type')
+        ..set('x-id', '2');
+
+      final clone = request.clone();
+
+      expect(request.headers.get('content-type'), isNull);
+      expect(request.headers.get('x-id'), '2');
+      expect(clone.headers.get('content-type'), isNull);
+      expect(clone.headers.get('x-id'), '2');
+      expect(await request.text(), 'hello');
+      expect(await clone.text(), 'hello');
+    });
+
     test('init override preserves deleted body-derived content-type', () async {
       final request = Request(
         'https://example.com/rebuild',

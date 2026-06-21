@@ -290,7 +290,9 @@ class Request implements native.Request {
     }
 
     return switch (_host) {
-      final WebRequestHost host => Request(host.value.clone()),
+      final WebRequestHost host => Request(
+        _nativeRequestFromWebRequest(host.value.clone(), init()),
+      ),
       final NativeRequestHost host => Request(
         native.Request(host.value, init()),
       ),

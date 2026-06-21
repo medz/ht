@@ -36,8 +36,7 @@ const _urlEncodedUtf8 = 'application/x-www-form-urlencoded;charset=UTF-8';
 
 /// Native detached body implementation.
 ///
-/// This is the shared body baseline that web/io implementations can align to,
-/// but it is intentionally not wired into the existing fetch types yet.
+/// This is the shared body baseline that web/io implementations align to.
 class Body extends Stream<Uint8List> {
   Body._({
     block.Block? blockHost,
