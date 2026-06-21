@@ -45,6 +45,44 @@ void main() {
       );
     });
 
+    test('copies raw HttpHeaders before appending body content-type', () async {
+      final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+      addTearDown(server.close);
+      final port = server.port;
+
+      final requestFuture = server.first;
+
+      final client = HttpClient();
+      addTearDown(client.close);
+
+      final clientRequest = await client.post(
+        InternetAddress.loopbackIPv4.host,
+        port,
+        '/headers-copy',
+      );
+      final clientResponseFuture = clientRequest.close();
+
+      final httpRequest = await requestFuture;
+      final request = native.Request(
+        'https://example.com/text',
+        native.RequestInit(
+          method: HttpMethod.post,
+          headers: httpRequest.headers,
+          body: 'hello',
+        ),
+      );
+
+      expect(request.headers.get('content-type'), 'text/plain;charset=UTF-8');
+      expect(httpRequest.headers[HttpHeaders.contentTypeHeader], isNull);
+
+      httpRequest.response
+        ..statusCode = HttpStatus.noContent
+        ..close();
+
+      final clientResponse = await clientResponseFuture;
+      await clientResponse.drain<void>();
+    });
+
     test('applies init overrides when cloning from wrapped requests', () async {
       final upstream = io_request.Request(
         native.Request(

@@ -32,8 +32,10 @@ class Response {
   factory Response([BodyInit? body, ResponseInit? init]) {
     final status = _validateStatus(init?.status ?? HttpStatus.ok);
     final responseBody = _bodyFromInit(body, status);
-    final headers = _headersFromInit(init?.headers);
-    _appendContentTypeFromBody(headers, responseBody);
+    final headers = _headersWithContentTypeFromBody(
+      _headersFromInit(init?.headers),
+      responseBody,
+    );
     return Response._internal(
       body: responseBody,
       headers: headers,
@@ -198,13 +200,13 @@ class Response {
     };
   }
 
-  static void _appendContentTypeFromBody(Headers headers, Body? body) {
+  static Headers _headersWithContentTypeFromBody(Headers headers, Body? body) {
     final contentType = body?.contentType;
     if (contentType == null || headers.has('content-type')) {
-      return;
+      return headers;
     }
 
-    headers.set('content-type', contentType);
+    return Headers(headers.entries())..set('content-type', contentType);
   }
 
   static int _validateStatus(int status) {

@@ -35,6 +35,39 @@ void main() {
       );
     });
 
+    test('copies raw HttpHeaders before appending body content-type', () async {
+      final server = await io.HttpServer.bind(
+        io.InternetAddress.loopbackIPv4,
+        0,
+      );
+      addTearDown(server.close);
+
+      server.listen((request) {
+        request.response.headers.contentType = null;
+        request.response
+          ..statusCode = io.HttpStatus.noContent
+          ..close();
+      });
+
+      final client = io.HttpClient();
+      addTearDown(client.close);
+
+      final httpRequest = await client.getUrl(
+        Uri.parse('http://${server.address.host}:${server.port}/'),
+      );
+      final httpResponse = await httpRequest.close();
+
+      final response = native.Response(
+        'hello',
+        native.ResponseInit(headers: httpResponse.headers),
+      );
+
+      expect(response.headers.get('content-type'), 'text/plain;charset=UTF-8');
+      expect(httpResponse.headers[io.HttpHeaders.contentTypeHeader], isNull);
+
+      await httpResponse.drain<void>();
+    });
+
     test('enforces native constructor invariants', () {
       expect(
         () => Response(null, const native.ResponseInit(status: 199)),

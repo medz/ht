@@ -146,11 +146,12 @@ class Request {
       referrer = _referrerFromInput(input, init?.referrer),
       referrerPolicy = _referrerPolicyFromInput(input, init?.referrerPolicy),
       url = _urlFromInput(input) {
-    _headers = _headersFromInput(input, init?.headers);
-    _body = _bodyFromInput(input, init?.body, method);
-    if (init?.body != null) {
-      _appendContentTypeFromBody(headers, body);
-    }
+    final body = _bodyFromInput(input, init?.body, method);
+    final headers = _headersFromInput(input, init?.headers);
+    _headers = init?.body == null
+        ? headers
+        : _headersWithContentTypeFromBody(headers, body);
+    _body = body;
   }
   late final Headers _headers;
   late final Body? _body;
@@ -274,13 +275,13 @@ class Request {
     return body?.clone();
   }
 
-  static void _appendContentTypeFromBody(Headers headers, Body? body) {
+  static Headers _headersWithContentTypeFromBody(Headers headers, Body? body) {
     final contentType = body?.contentType;
     if (contentType == null || headers.has('content-type')) {
-      return;
+      return headers;
     }
 
-    headers.set('content-type', contentType);
+    return Headers(headers.entries())..set('content-type', contentType);
   }
 
   static RequestCache _cacheFromInput(_RequestInput input, RequestCache? init) {
