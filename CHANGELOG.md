@@ -1,5 +1,24 @@
 ## Next
 
+## 0.4.0
+
+- Hardened native `FormData.parse()` `multipart/form-data` parsing for real
+  HTTP interop, including quoted boundaries, strict boundary delimiters,
+  duplicate header/parameter rejection, `Content-Disposition` validation,
+  charset-aware text fields, and RFC 5987-style `filename*` compatibility.
+- Switched native multipart parsing to stream input chunks instead of eagerly
+  materializing the whole request body, while keeping parsed file parts on the
+  existing lazy `Blob`/`Block` path.
+- Fixed multipart boundary handling so boundary-like bytes inside binary
+  payloads, including closing-boundary-like lines and split closing delimiters,
+  are preserved correctly.
+- Fixed Fetch constructor invariants for methods and statuses that cannot carry
+  bodies.
+- Fixed `URLSearchParams.sort()` ordering stability.
+- Fixed repeated `dart:io` header values when adapting native headers.
+- Clarified file body initialization documentation and updated request examples.
+- Upgraded the `block` dependency constraint to use the newer file adapter.
+
 ## 0.3.2
 
 - Fixed default `FormData.encodeMultipart()` boundary generation on js
