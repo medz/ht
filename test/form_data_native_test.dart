@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:ht/src/fetch/body.dart';
@@ -83,6 +84,275 @@ void main() {
       expect(blob.filename, 'a.txt');
       expect(blob.type, 'text/plain;charset=utf-8');
       expect(await blob.text(), 'binary');
+    });
+
+    test('parses quoted multipart boundary values', () async {
+      const boundary = 'quoted-boundary';
+      final formData = await FormData.parse(
+        _bodyBytes([
+          '--$boundary\r\n'
+              'Content-Disposition: form-data; name="field"\r\n'
+              '\r\n'
+              'value\r\n'
+              '--$boundary--\r\n',
+        ]),
+        contentType: 'multipart/form-data; boundary="$boundary"',
+      );
+
+      expect((formData.get('field')! as TextMultipart).value, 'value');
+    });
+
+    test('rejects duplicate content-type boundary parameters', () async {
+      const boundary = 'duplicate-boundary';
+
+      await expectLater(
+        FormData.parse(
+          _bodyBytes(['--$boundary--\r\n']),
+          contentType:
+              'multipart/form-data; boundary=$boundary; boundary=other',
+        ),
+        throwsFormatException,
+      );
+    });
+
+    test('rejects malformed multipart boundary separators', () async {
+      const boundary = 'malformed-boundary';
+
+      await expectLater(
+        FormData.parse(
+          _bodyBytes([
+            '--$boundary\n'
+                'Content-Disposition: form-data; name="field"\r\n'
+                '\r\n'
+                'value\r\n'
+                '--$boundary--\r\n',
+          ]),
+          contentType: 'multipart/form-data; boundary=$boundary',
+        ),
+        throwsFormatException,
+      );
+    });
+
+    test('rejects multipart parts without content-disposition', () async {
+      const boundary = 'missing-disposition-boundary';
+
+      await expectLater(
+        FormData.parse(
+          _bodyBytes([
+            '--$boundary\r\n'
+                'Content-Type: text/plain\r\n'
+                '\r\n'
+                'value\r\n'
+                '--$boundary--\r\n',
+          ]),
+          contentType: 'multipart/form-data; boundary=$boundary',
+        ),
+        throwsFormatException,
+      );
+    });
+
+    test('rejects duplicate multipart part headers', () async {
+      const boundary = 'duplicate-header-boundary';
+
+      await expectLater(
+        FormData.parse(
+          _bodyBytes([
+            '--$boundary\r\n'
+                'Content-Disposition: form-data; name="a"\r\n'
+                'Content-Disposition: form-data; name="b"\r\n'
+                '\r\n'
+                'value\r\n'
+                '--$boundary--\r\n',
+          ]),
+          contentType: 'multipart/form-data; boundary=$boundary',
+        ),
+        throwsFormatException,
+      );
+    });
+
+    test('rejects duplicate content-disposition parameters', () async {
+      const boundary = 'duplicate-parameter-boundary';
+
+      await expectLater(
+        FormData.parse(
+          _bodyBytes([
+            '--$boundary\r\n'
+                'Content-Disposition: form-data; name="a"; name="b"\r\n'
+                '\r\n'
+                'value\r\n'
+                '--$boundary--\r\n',
+          ]),
+          contentType: 'multipart/form-data; boundary=$boundary',
+        ),
+        throwsFormatException,
+      );
+    });
+
+    test('decodes text parts with explicit charset parameters', () async {
+      const boundary = 'charset-boundary';
+      final formData = await FormData.parse(
+        _bodyBytes([
+          '--$boundary\r\n'
+              'Content-Disposition: form-data; name="title"\r\n'
+              'Content-Type: text/plain; charset=iso-8859-1\r\n'
+              '\r\n',
+          [0x63, 0x61, 0x66, 0xe9],
+          '\r\n--$boundary--\r\n',
+        ]),
+        contentType: 'multipart/form-data; boundary=$boundary',
+      );
+
+      expect((formData.get('title')! as TextMultipart).value, 'caf\u00e9');
+    });
+
+    test('keeps boundary-like bytes inside binary payloads', () async {
+      const boundary = 'binary-boundary';
+      final formData = await FormData.parse(
+        _bodyBytes([
+          '--$boundary\r\n'
+              'Content-Disposition: form-data; name="file"; filename="a.bin"\r\n'
+              'Content-Type: application/octet-stream\r\n'
+              '\r\n'
+              'before\r\n'
+              '--$boundary-not-a-delimiter\r\n'
+              'after\r\n'
+              '--$boundary--\r\n',
+        ]),
+        contentType: 'multipart/form-data; boundary=$boundary',
+      );
+
+      final file = formData.get('file')! as BlobMultipart;
+      expect(
+        await file.text(),
+        'before\r\n--$boundary-not-a-delimiter\r\nafter',
+      );
+    });
+
+    test('keeps closing-boundary-like bytes inside binary payloads', () async {
+      const boundary = 'closing-like-boundary';
+      final formData = await FormData.parse(
+        _bodyBytes([
+          '--$boundary\r\n'
+              'Content-Disposition: form-data; name="file"; filename="a.bin"\r\n'
+              'Content-Type: application/octet-stream\r\n'
+              '\r\n'
+              'before\r\n'
+              '--$boundary--not-a-delimiter\r\n'
+              'after\r\n'
+              '--$boundary--\r\n',
+        ]),
+        contentType: 'multipart/form-data; boundary=$boundary',
+      );
+
+      final file = formData.get('file')! as BlobMultipart;
+      expect(
+        await file.text(),
+        'before\r\n--$boundary--not-a-delimiter\r\nafter',
+      );
+    });
+
+    test('parses multipart bodies across stream chunk boundaries', () async {
+      const boundary = 'stream-boundary';
+      final formData = await FormData.parse(
+        _bodyChunks([
+          '--str',
+          'eam-boundary\r',
+          '\nContent-Dis',
+          'position: form-data; name="field"\r\n\r\nhe',
+          'llo\r',
+          '\n--stream-bou',
+          'ndary\r\nContent-Disposition: form-data; '
+              'name="file"; filename="a.txt"\r\n'
+              'Content-Type: text/plain\r\n'
+              '\r\npay',
+          'load\r\n--stream-bound',
+          'ary--',
+          '\r\n',
+        ]),
+        contentType: 'multipart/form-data; boundary=$boundary',
+      );
+
+      expect((formData.get('field')! as TextMultipart).value, 'hello');
+
+      final file = formData.get('file')! as BlobMultipart;
+      expect(file.filename, 'a.txt');
+      expect(file.type, 'text/plain');
+      expect(await file.text(), 'payload');
+    });
+
+    test('parses closing boundaries split after trailing CR', () async {
+      const boundary = 'split-closing-boundary';
+      final formData = await FormData.parse(
+        _bodyChunks([
+          '--$boundary\r\n'
+              'Content-Disposition: form-data; name="file"; filename="a.txt"\r\n'
+              'Content-Type: text/plain\r\n'
+              '\r\npayload\r\n--$boundary--\r',
+          '\n',
+        ]),
+        contentType: 'multipart/form-data; boundary=$boundary',
+      );
+
+      final file = formData.get('file')! as BlobMultipart;
+      expect(await file.text(), 'payload');
+    });
+
+    test('parses RFC 5987 filename star parameters', () async {
+      const boundary = 'filename-star-boundary';
+      final formData = await FormData.parse(
+        _bodyBytes([
+          '--$boundary\r\n'
+              "Content-Disposition: form-data; name=\"file\"; filename*=UTF-8''caf%C3%A9.txt\r\n"
+              'Content-Type: text/plain\r\n'
+              '\r\n'
+              'payload\r\n'
+              '--$boundary--\r\n',
+        ]),
+        contentType: 'multipart/form-data; boundary=$boundary',
+      );
+
+      final file = formData.get('file')! as BlobMultipart;
+      expect(file.filename, 'caf\u00e9.txt');
+      expect(await file.text(), 'payload');
+    });
+
+    test('prefers filename star over filename fallback', () async {
+      const boundary = 'filename-priority-boundary';
+      final formData = await FormData.parse(
+        _bodyBytes([
+          '--$boundary\r\n'
+              'Content-Disposition: form-data; name="file"; '
+              'filename="fallback.txt"; filename*=UTF-8\'\'%E2%82%ACrates.txt\r\n'
+              'Content-Type: text/plain\r\n'
+              '\r\n'
+              'payload\r\n'
+              '--$boundary--\r\n',
+        ]),
+        contentType: 'multipart/form-data; boundary=$boundary',
+      );
+
+      expect(
+        (formData.get('file')! as BlobMultipart).filename,
+        '\u20acrates.txt',
+      );
+    });
+
+    test('rejects multipart parts without form-data disposition', () async {
+      const boundary = 'invalid-disposition-boundary';
+
+      await expectLater(
+        FormData.parse(
+          _bodyBytes([
+            '--$boundary\r\n'
+                'Content-Disposition: attachment; name="file"; filename="a.txt"\r\n'
+                '\r\n'
+                'payload\r\n'
+                '--$boundary--\r\n',
+          ]),
+          contentType: 'multipart/form-data; boundary=$boundary',
+        ),
+        throwsFormatException,
+      );
     });
 
     test('parses quoted multipart parameters containing semicolons', () async {
@@ -228,4 +498,23 @@ void main() {
       expect(entries, [('a', 'x'), ('b', '2')]);
     });
   });
+}
+
+Body _bodyBytes(List<Object> parts) {
+  final builder = BytesBuilder(copy: false);
+  for (final part in parts) {
+    switch (part) {
+      case final String value:
+        builder.add(ascii.encode(value));
+      case final List<int> value:
+        builder.add(value);
+      default:
+        throw ArgumentError.value(part, 'parts', 'Unsupported test body part.');
+    }
+  }
+  return Body(builder.takeBytes());
+}
+
+Body _bodyChunks(List<String> chunks) {
+  return Body(Stream<List<int>>.fromIterable(chunks.map(ascii.encode)));
 }
