@@ -229,11 +229,10 @@ class Request {
 
   Request clone() {
     return Request(
-      url,
+      this,
       RequestInit(
         method: method,
         headers: Headers(headers),
-        body: body?.clone(),
         referrer: referrer,
         referrerPolicy: referrerPolicy,
         mode: mode,

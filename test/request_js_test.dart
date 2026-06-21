@@ -57,6 +57,22 @@ void main() {
       expect(request.headers.get('content-type'), 'text/plain;charset=UTF-8');
     });
 
+    test('clone preserves deleted body-derived content-type', () async {
+      final request = Request(
+        'https://example.com/clone',
+        native.RequestInit(method: HttpMethod.post, body: 'hello'),
+      );
+      expect(request.headers.get('content-type'), 'text/plain;charset=UTF-8');
+
+      request.headers.delete('content-type');
+      final clone = request.clone();
+
+      expect(request.headers.get('content-type'), isNull);
+      expect(clone.headers.get('content-type'), isNull);
+      expect(await request.text(), 'hello');
+      expect(await clone.text(), 'hello');
+    });
+
     test('applies init overrides when cloning from wrapped requests', () async {
       final upstream = Request(
         web.Request(

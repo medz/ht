@@ -272,9 +272,28 @@ class Request implements native.Request {
 
   @override
   Request clone() {
+    native.RequestInit init({BodyInit? body}) {
+      return native.RequestInit(
+        method: method,
+        headers: js_headers.Headers(headers),
+        body: body,
+        referrer: referrer,
+        referrerPolicy: referrerPolicy,
+        mode: mode,
+        credentials: credentials,
+        cache: cache,
+        redirect: redirect,
+        integrity: integrity,
+        keepalive: keepalive,
+        duplex: duplex,
+      );
+    }
+
     return switch (_host) {
       final WebRequestHost host => Request(host.value.clone()),
-      final NativeRequestHost host => Request(host.value.clone()),
+      final NativeRequestHost host => Request(
+        native.Request(host.value, init()),
+      ),
     };
   }
 

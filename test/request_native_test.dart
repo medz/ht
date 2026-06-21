@@ -297,6 +297,22 @@ void main() {
       expect(await clone.text(), 'hello world');
     });
 
+    test('clone preserves deleted body-derived content-type', () async {
+      final request = Request(
+        'https://example.com/clone',
+        RequestInit(method: HttpMethod.post, body: 'hello'),
+      );
+      expect(request.headers.get('content-type'), 'text/plain;charset=UTF-8');
+
+      request.headers.delete('content-type');
+      final clone = request.clone();
+
+      expect(request.headers.get('content-type'), isNull);
+      expect(clone.headers.get('content-type'), isNull);
+      expect(await request.text(), 'hello');
+      expect(await clone.text(), 'hello');
+    });
+
     test('clone fails after body has been consumed', () async {
       final request = Request(
         'https://example.com/clone',

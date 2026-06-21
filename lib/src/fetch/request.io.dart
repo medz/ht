@@ -229,26 +229,34 @@ class Request implements native.Request {
   @override
   Request clone() {
     final method = this.method;
-    final body = method.allowsRequestBody ? this.body : null;
-    return Request(
-      native.Request(
-        url,
-        native.RequestInit(
-          method: method,
-          headers: io_headers.Headers(headers),
-          body: body?.clone(),
-          referrer: referrer,
-          referrerPolicy: referrerPolicy,
-          mode: mode,
-          credentials: credentials,
-          cache: cache,
-          redirect: redirect,
-          integrity: integrity,
-          keepalive: keepalive,
-          duplex: duplex,
+    native.RequestInit init({BodyInit? body}) {
+      return native.RequestInit(
+        method: method,
+        headers: io_headers.Headers(headers),
+        body: body,
+        referrer: referrer,
+        referrerPolicy: referrerPolicy,
+        mode: mode,
+        credentials: credentials,
+        cache: cache,
+        redirect: redirect,
+        integrity: integrity,
+        keepalive: keepalive,
+        duplex: duplex,
+      );
+    }
+
+    return switch (_host) {
+      final NativeRequestHost host => Request(
+        native.Request(host.value, init()),
+      ),
+      HttpRequestHost() => Request(
+        native.Request(
+          url,
+          init(body: method.allowsRequestBody ? body?.clone() : null),
         ),
       ),
-    );
+    };
   }
 
   static native.Request _toNativeRequest(
