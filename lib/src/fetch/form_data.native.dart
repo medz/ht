@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:math';
 import 'dart:typed_data';
 
+import 'package:block/block.dart' as block;
 import 'package:http_parser/http_parser.dart' as http_parser;
 
 import 'blob.dart';
@@ -187,66 +188,7 @@ class FormData with Iterable<MapEntry<String, Multipart>> {
       );
     }
 
-    final bytes = await body.bytes();
-    final boundaryMarker = utf8.encode('--$boundary');
-    final prefixedBoundaryMarker = <int>[..._crlf, ...boundaryMarker];
-    final headerSeparator = utf8.encode('\r\n\r\n');
-    final formData = FormData();
-
-    final firstBoundary = _findFirstBoundary(
-      bytes,
-      boundaryMarker,
-      prefixedBoundaryMarker,
-    );
-    if (firstBoundary == null) {
-      throw const FormatException('Multipart body does not contain boundary.');
-    }
-
-    var boundaryMatch = firstBoundary;
-    while (true) {
-      if (boundaryMatch.closing) {
-        break;
-      }
-
-      final offset = boundaryMatch.afterMarker + _crlf.length;
-
-      final headerEnd = _indexOf(bytes, headerSeparator, offset);
-      if (headerEnd == -1) {
-        throw const FormatException('Invalid multipart part headers.');
-      }
-
-      final headers = _parsePartHeaders(
-        Uint8List.sublistView(bytes, offset, headerEnd),
-      );
-      final contentStart = headerEnd + headerSeparator.length;
-      // Only a line that is followed by CRLF or "--" is a real delimiter.
-      // Boundary-like bytes inside file payloads must remain part of the body.
-      final nextBoundary = _findNextBoundary(
-        bytes,
-        boundaryMarker,
-        prefixedBoundaryMarker,
-        contentStart,
-      );
-      if (nextBoundary == null) {
-        throw const FormatException(
-          'Multipart part is missing a closing boundary.',
-        );
-      }
-
-      final contentBytes = Uint8List.sublistView(
-        bytes,
-        contentStart,
-        nextBoundary.lineStart,
-      );
-      final disposition = _contentDispositionFromPartHeaders(headers);
-      formData.append(
-        disposition.name,
-        _partBodyFromHeaders(headers, disposition, contentBytes),
-      );
-      boundaryMatch = nextBoundary;
-    }
-
-    return formData;
+    return _MultipartStreamParser(body, boundary).parse();
   }
 
   static http_parser.MediaType? _parseContentType(String? contentType) {
@@ -319,18 +261,26 @@ class FormData with Iterable<MapEntry<String, Multipart>> {
   static Multipart _partBodyFromHeaders(
     Map<String, String> headers,
     _ContentDisposition disposition,
-    Uint8List bytes,
+    List<Uint8List> chunks,
   ) {
     final contentType = _partContentType(headers);
     final filename = disposition.filename;
     if (filename != null) {
+      final type = contentType?.raw ?? '';
       return Multipart.blob(
-        Blob(<BlobPart>[bytes], contentType?.raw ?? ''),
+        Blob(<BlobPart>[block.Block(chunks, type: type)], type),
         filename,
       );
     }
 
-    return Multipart.text(_decodeTextPart(bytes, contentType?.mediaType));
+    final builder = BytesBuilder(copy: false);
+    for (final chunk in chunks) {
+      builder.add(chunk);
+    }
+
+    return Multipart.text(
+      _decodeTextPart(builder.takeBytes(), contentType?.mediaType),
+    );
   }
 
   static _PartContentType? _partContentType(Map<String, String> headers) {
@@ -596,76 +546,6 @@ class FormData with Iterable<MapEntry<String, Multipart>> {
     };
   }
 
-  static _BoundaryMatch? _findFirstBoundary(
-    Uint8List bytes,
-    List<int> boundaryMarker,
-    List<int> prefixedBoundaryMarker,
-  ) {
-    if (_matches(bytes, 0, boundaryMarker)) {
-      final first = _boundaryMatchAt(bytes, 0, 0, boundaryMarker);
-      if (first != null) return first;
-      throw const FormatException('Invalid multipart boundary separator.');
-    }
-
-    return _findNextBoundary(bytes, boundaryMarker, prefixedBoundaryMarker, 0);
-  }
-
-  static _BoundaryMatch? _findNextBoundary(
-    Uint8List bytes,
-    List<int> boundaryMarker,
-    List<int> prefixedBoundaryMarker,
-    int start,
-  ) {
-    var offset = start;
-
-    while (offset != -1) {
-      final lineStart = _indexOf(bytes, prefixedBoundaryMarker, offset);
-      if (lineStart == -1) return null;
-
-      final match = _boundaryMatchAt(
-        bytes,
-        lineStart,
-        lineStart + _crlf.length,
-        boundaryMarker,
-      );
-      if (match != null) return match;
-
-      offset = lineStart + 1;
-    }
-
-    return null;
-  }
-
-  static _BoundaryMatch? _boundaryMatchAt(
-    Uint8List bytes,
-    int lineStart,
-    int markerStart,
-    List<int> boundaryMarker,
-  ) {
-    if (!_matches(bytes, markerStart, boundaryMarker)) {
-      return null;
-    }
-
-    final afterMarker = markerStart + boundaryMarker.length;
-    if (_matches(bytes, afterMarker, _dashDash)) {
-      return _BoundaryMatch(
-        lineStart: lineStart,
-        afterMarker: afterMarker + _dashDash.length,
-        closing: true,
-      );
-    }
-
-    if (_matches(bytes, afterMarker, _crlf)) {
-      return _BoundaryMatch(
-        lineStart: lineStart,
-        afterMarker: afterMarker,
-        closing: false,
-      );
-    }
-
-    return null;
-  }
-
   static int _indexOf(List<int> haystack, List<int> needle, [int start = 0]) {
     if (needle.isEmpty) {
       return start <= haystack.length ? start : -1;
@@ -790,6 +670,270 @@ class FormData with Iterable<MapEntry<String, Multipart>> {
 
   static Uint8List _utf8(String value) =>
       Uint8List.fromList(utf8.encode(value));
+}
+
+enum _MultipartParseState { firstBoundary, headers, content, closed }
+
+final class _MultipartStreamParser {
+  _MultipartStreamParser(this._body, String boundary)
+    : _boundaryMarker = utf8.encode('--$boundary'),
+      _prefixedBoundaryMarker = <int>[
+        ...FormData._crlf,
+        ...utf8.encode('--$boundary'),
+      ],
+      _headerSeparator = utf8.encode('\r\n\r\n');
+
+  final Body _body;
+  final List<int> _boundaryMarker;
+  final List<int> _prefixedBoundaryMarker;
+  final List<int> _headerSeparator;
+  final _buffer = <int>[];
+  final _formData = FormData();
+
+  var _state = _MultipartParseState.firstBoundary;
+  Map<String, String>? _partHeaders;
+  _ContentDisposition? _partDisposition;
+  List<Uint8List>? _partChunks;
+
+  Future<FormData> parse() async {
+    await for (final chunk in _body) {
+      if (_state == _MultipartParseState.closed) {
+        continue;
+      }
+
+      _append(chunk);
+      _drain();
+    }
+
+    _finish();
+    return _formData;
+  }
+
+  void _append(Uint8List chunk) {
+    if (chunk.isEmpty) return;
+    _buffer.addAll(chunk);
+  }
+
+  void _drain() {
+    var advanced = true;
+    while (advanced && _state != _MultipartParseState.closed) {
+      advanced = _advance();
+    }
+
+    if (_state == _MultipartParseState.closed) {
+      _buffer.clear();
+    }
+  }
+
+  bool _advance() {
+    return switch (_state) {
+      _MultipartParseState.firstBoundary => _advanceFirstBoundary(),
+      _MultipartParseState.headers => _advanceHeaders(),
+      _MultipartParseState.content => _advanceContent(),
+      _MultipartParseState.closed => false,
+    };
+  }
+
+  bool _advanceFirstBoundary() {
+    final match = _findFirstBoundary();
+    if (match == null) return false;
+
+    _consumeBoundary(match);
+    return true;
+  }
+
+  bool _advanceHeaders() {
+    final headerEnd = FormData._indexOf(_buffer, _headerSeparator);
+    if (headerEnd == -1) return false;
+
+    final headers = FormData._parsePartHeaders(
+      Uint8List.fromList(_buffer.sublist(0, headerEnd)),
+    );
+
+    _partHeaders = headers;
+    _partDisposition = FormData._contentDispositionFromPartHeaders(headers);
+    _partChunks = <Uint8List>[];
+    _consume(headerEnd + _headerSeparator.length);
+    _state = _MultipartParseState.content;
+    return true;
+  }
+
+  bool _advanceContent() {
+    // Only a line that is followed by CRLF or "--" is a real delimiter.
+    // Boundary-like bytes inside file payloads must remain part of the body.
+    final match = _findNextBoundary();
+    if (match == null) {
+      _flushSafeContentPrefix();
+      return false;
+    }
+
+    _addContentChunk(0, match.lineStart);
+    final headers = _partHeaders!;
+    final disposition = _partDisposition!;
+    _formData.append(
+      disposition.name,
+      FormData._partBodyFromHeaders(headers, disposition, _partChunks!),
+    );
+
+    _partHeaders = null;
+    _partDisposition = null;
+    _partChunks = null;
+    _consumeBoundary(match);
+    return true;
+  }
+
+  void _finish() {
+    _drain();
+    switch (_state) {
+      case _MultipartParseState.closed:
+        return;
+      case _MultipartParseState.firstBoundary:
+        throw const FormatException(
+          'Multipart body does not contain boundary.',
+        );
+      case _MultipartParseState.headers:
+        throw const FormatException('Invalid multipart part headers.');
+      case _MultipartParseState.content:
+        throw const FormatException(
+          'Multipart part is missing a closing boundary.',
+        );
+    }
+  }
+
+  _BoundaryMatch? _findFirstBoundary() {
+    if (_buffer.isEmpty) return null;
+
+    if (_couldMatchAt(0, _boundaryMarker)) {
+      final probe = _probeBoundaryAt(0, 0);
+      if (probe.needMore) return null;
+      if (probe.match case final match?) return match;
+      throw const FormatException('Invalid multipart boundary separator.');
+    }
+
+    final match = _findNextBoundary();
+    if (match != null) return match;
+    _discardSafePreamblePrefix();
+    return null;
+  }
+
+  _BoundaryMatch? _findNextBoundary() {
+    var offset = 0;
+
+    while (offset != -1) {
+      final lineStart = FormData._indexOf(
+        _buffer,
+        _prefixedBoundaryMarker,
+        offset,
+      );
+      if (lineStart == -1) return null;
+
+      final probe = _probeBoundaryAt(
+        lineStart,
+        lineStart + FormData._crlf.length,
+      );
+      if (probe.needMore) return null;
+      if (probe.match case final match?) return match;
+
+      offset = lineStart + 1;
+    }
+
+    return null;
+  }
+
+  _BoundaryProbe _probeBoundaryAt(int lineStart, int markerStart) {
+    final markerAvailable = _buffer.length - markerStart;
+    if (markerAvailable < _boundaryMarker.length) {
+      return const _BoundaryProbe.needMore();
+    }
+
+    if (!FormData._matches(_buffer, markerStart, _boundaryMarker)) {
+      return const _BoundaryProbe.invalid();
+    }
+
+    final afterMarker = markerStart + _boundaryMarker.length;
+    if (_buffer.length - afterMarker < 2) {
+      return const _BoundaryProbe.needMore();
+    }
+
+    if (FormData._matches(_buffer, afterMarker, FormData._dashDash)) {
+      return _BoundaryProbe.match(
+        _BoundaryMatch(
+          lineStart: lineStart,
+          afterMarker: afterMarker + FormData._dashDash.length,
+          closing: true,
+        ),
+      );
+    }
+
+    if (FormData._matches(_buffer, afterMarker, FormData._crlf)) {
+      return _BoundaryProbe.match(
+        _BoundaryMatch(
+          lineStart: lineStart,
+          afterMarker: afterMarker,
+          closing: false,
+        ),
+      );
+    }
+
+    return const _BoundaryProbe.invalid();
+  }
+
+  bool _couldMatchAt(int start, List<int> needle) {
+    final available = _buffer.length - start;
+    if (available <= 0) return false;
+
+    final length = available < needle.length ? available : needle.length;
+    for (var index = 0; index < length; index++) {
+      if (_buffer[start + index] != needle[index]) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  void _consumeBoundary(_BoundaryMatch match) {
+    final count = match.closing
+        ? match.afterMarker
+        : match.afterMarker + FormData._crlf.length;
+    _consume(count);
+    _state = match.closing
+        ? _MultipartParseState.closed
+        : _MultipartParseState.headers;
+  }
+
+  void _flushSafeContentPrefix() {
+    final retain = _prefixedBoundaryMarker.length + FormData._dashDash.length;
+    if (_buffer.length <= retain) return;
+
+    final end = _buffer.length - retain;
+    _addContentChunk(0, end);
+    _consume(end);
+  }
+
+  void _discardSafePreamblePrefix() {
+    final retain = _prefixedBoundaryMarker.length + FormData._dashDash.length;
+    if (_buffer.length <= retain) return;
+    _consume(_buffer.length - retain);
+  }
+
+  void _addContentChunk(int start, int end) {
+    if (end <= start) return;
+    _partChunks!.add(Uint8List.fromList(_buffer.sublist(start, end)));
+  }
+
+  void _consume(int count) {
+    if (count <= 0) return;
+    _buffer.removeRange(0, count);
+  }
+}
+
+final class _BoundaryProbe {
+  const _BoundaryProbe.match(this.match) : needMore = false;
+  const _BoundaryProbe.needMore() : match = null, needMore = true;
+  const _BoundaryProbe.invalid() : match = null, needMore = false;
+
+  final _BoundaryMatch? match;
+  final bool needMore;
 }
 
 final class _BoundaryMatch {

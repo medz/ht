@@ -228,6 +228,35 @@ void main() {
       );
     });
 
+    test('parses multipart bodies across stream chunk boundaries', () async {
+      const boundary = 'stream-boundary';
+      final formData = await FormData.parse(
+        _bodyChunks([
+          '--str',
+          'eam-boundary\r',
+          '\nContent-Dis',
+          'position: form-data; name="field"\r\n\r\nhe',
+          'llo\r',
+          '\n--stream-bou',
+          'ndary\r\nContent-Disposition: form-data; '
+              'name="file"; filename="a.txt"\r\n'
+              'Content-Type: text/plain\r\n'
+              '\r\npay',
+          'load\r\n--stream-bound',
+          'ary--',
+          '\r\n',
+        ]),
+        contentType: 'multipart/form-data; boundary=$boundary',
+      );
+
+      expect((formData.get('field')! as TextMultipart).value, 'hello');
+
+      final file = formData.get('file')! as BlobMultipart;
+      expect(file.filename, 'a.txt');
+      expect(file.type, 'text/plain');
+      expect(await file.text(), 'payload');
+    });
+
     test('parses RFC 5987 filename star parameters', () async {
       const boundary = 'filename-star-boundary';
       final formData = await FormData.parse(
@@ -444,4 +473,8 @@ Body _bodyBytes(List<Object> parts) {
     }
   }
   return Body(builder.takeBytes());
+}
+
+Body _bodyChunks(List<String> chunks) {
+  return Body(Stream<List<int>>.fromIterable(chunks.map(ascii.encode)));
 }
