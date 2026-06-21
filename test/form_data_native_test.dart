@@ -159,6 +159,27 @@ void main() {
   });
 
   group('FormData.encodeMultipart (native)', () {
+    test('generates a default multipart boundary', () async {
+      final encoded = (FormData()..append('name', const Multipart.text('ht')))
+          .encodeMultipart();
+
+      expect(encoded.boundary, startsWith('----ht-'));
+      expect(encoded.boundary, matches(RegExp(r'^----ht-[a-z0-9]+$')));
+      expect(
+        encoded.contentType,
+        'multipart/form-data; boundary=${encoded.boundary}',
+      );
+
+      final bytes = await encoded.bytes();
+      expect(bytes.length, encoded.contentLength);
+
+      final parsed = await FormData.parse(
+        Body(encoded.stream),
+        contentType: encoded.contentType,
+      );
+      expect((parsed.get('name')! as TextMultipart).value, 'ht');
+    });
+
     test('returns encoded multipart metadata and payload', () async {
       final encoded =
           (FormData()

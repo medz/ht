@@ -75,6 +75,9 @@ final class EncodedFormData {
 }
 
 class FormData with Iterable<MapEntry<String, Multipart>> {
+  static final _boundaryRandom = Random();
+  static var _boundaryCounter = 0;
+
   static Future<FormData> parse(Body body, {String? contentType}) async {
     final essence = _contentTypeEssence(contentType);
     return switch (essence) {
@@ -427,12 +430,14 @@ class FormData with Iterable<MapEntry<String, Multipart>> {
 
   static String _generateBoundary() {
     const alphabet = 'abcdefghijklmnopqrstuvwxyz0123456789';
-    final random = Random.secure();
-    final suffix = List<String>.generate(
-      24,
-      (_) => alphabet[random.nextInt(alphabet.length)],
-      growable: false,
-    ).join();
+    final suffix = StringBuffer()
+      ..write(DateTime.now().microsecondsSinceEpoch.toRadixString(36))
+      ..write((_boundaryCounter++).toRadixString(36));
+
+    for (var index = 0; index < 16; index++) {
+      suffix.write(alphabet[_boundaryRandom.nextInt(alphabet.length)]);
+    }
+
     return '----ht-$suffix';
   }
 
