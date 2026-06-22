@@ -52,6 +52,17 @@ final class _ResponseSnapshot {
   final String statusText;
   final native.ResponseType type;
   final String url;
+
+  _ResponseSnapshot withHeaders(io_headers.Headers headers) {
+    return _ResponseSnapshot(
+      headers: headers,
+      redirected: redirected,
+      status: status,
+      statusText: statusText,
+      type: type,
+      url: url,
+    );
+  }
 }
 
 class Response implements native.Response {
@@ -315,18 +326,17 @@ class Response implements native.Response {
       return Response._(cloneHost(), snapshot);
     }
 
-    return Response._(
-      NativeResponseHost(
-        _nativeResponseFromCopy(
-          body(),
-          snapshot: snapshot,
-          preserveMissingContentType: _shouldPreserveMissingContentType(
-            init,
-            snapshot,
-          ),
-        ),
+    final nativeCopy = _nativeResponseFromCopy(
+      body(),
+      snapshot: snapshot,
+      preserveMissingContentType: _shouldPreserveMissingContentType(
+        init,
+        snapshot,
       ),
-      snapshot,
+    );
+    return Response._(
+      NativeResponseHost(nativeCopy),
+      snapshot.withHeaders(io_headers.Headers(nativeCopy.headers)),
     );
   }
 

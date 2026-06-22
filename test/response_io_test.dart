@@ -86,6 +86,7 @@ void main() {
       expect(response.statusText, 'Created');
       expect(response.headers.get('x-source'), isNull);
       expect(response.headers.get('x-init'), '1');
+      expect(response.headers.get('content-type'), 'text/plain;charset=UTF-8');
       expect(upstream.bodyUsed, isFalse);
       expect(await response.text(), 'source body');
       expect(upstream.bodyUsed, isFalse);
@@ -115,6 +116,7 @@ void main() {
       expect(response.statusText, 'Created');
       expect(response.headers.get('x-source'), isNull);
       expect(response.headers.get('x-init'), '1');
+      expect(response.headers.get('content-type'), 'text/plain;charset=UTF-8');
       expect(upstream.bodyUsed, isFalse);
       expect(await response.text(), 'native body');
       expect(upstream.bodyUsed, isFalse);

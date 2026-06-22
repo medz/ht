@@ -122,11 +122,34 @@ void main() {
       expect(response.statusText, 'Created');
       expect(response.headers.get('x-source'), isNull);
       expect(response.headers.get('x-init'), '1');
+      expect(response.headers.get('content-type'), 'text/plain;charset=UTF-8');
       expect(upstream.bodyUsed, isFalse);
       expect(await response.text(), 'native body');
       expect(upstream.bodyUsed, isFalse);
       expect(await upstream.text(), 'native body');
     });
+
+    test(
+      'preserves body-derived content-type for native-backed wrapper copies',
+      () async {
+        final upstream = Response('wrapped body');
+
+        final response = Response(
+          upstream,
+          native.ResponseInit(headers: {'x-init': '1'}),
+        );
+
+        expect(response.headers.get('x-init'), '1');
+        expect(
+          response.headers.get('content-type'),
+          'text/plain;charset=UTF-8',
+        );
+        expect(upstream.bodyUsed, isFalse);
+        expect(await response.text(), 'wrapped body');
+        expect(upstream.bodyUsed, isFalse);
+        expect(await upstream.text(), 'wrapped body');
+      },
+    );
 
     test(
       'preserves deleted body-derived content-type when copying responses',

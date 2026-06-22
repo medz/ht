@@ -8,6 +8,7 @@ import 'package:web/web.dart' as web;
 
 import '../_internal/web_fetch_utils.dart' as web_fetch;
 import '../_internal/web_stream_bridge.dart';
+import '../core/http_status.dart';
 import 'blob.dart';
 import 'body.dart';
 import 'form_data.native.dart';
@@ -72,6 +73,17 @@ final class _ResponseSnapshot {
   final String statusText;
   final native.ResponseType type;
   final String url;
+
+  _ResponseSnapshot withHeaders(js_headers.Headers headers) {
+    return _ResponseSnapshot(
+      headers: headers,
+      redirected: redirected,
+      status: status,
+      statusText: statusText,
+      type: type,
+      url: url,
+    );
+  }
 }
 
 class Response implements native.Response {
@@ -161,9 +173,7 @@ class Response implements native.Response {
   @override
   bool get ok {
     final snapshot = _snapshot;
-    if (snapshot != null) {
-      return snapshot.status >= 200 && snapshot.status <= 299;
-    }
+    if (snapshot != null) return HttpStatus.isSuccess(snapshot.status);
 
     return switch (_host) {
       final WebResponseHost host => host.value.ok,
@@ -420,18 +430,17 @@ class Response implements native.Response {
       return Response._(cloneHost(), snapshot);
     }
 
-    return Response._(
-      NativeResponseHost(
-        _nativeResponseFromCopy(
-          body(),
-          snapshot: snapshot,
-          preserveMissingContentType: _shouldPreserveMissingContentType(
-            init,
-            snapshot,
-          ),
-        ),
+    final nativeCopy = _nativeResponseFromCopy(
+      body(),
+      snapshot: snapshot,
+      preserveMissingContentType: _shouldPreserveMissingContentType(
+        init,
+        snapshot,
       ),
-      snapshot,
+    );
+    return Response._(
+      NativeResponseHost(nativeCopy),
+      snapshot.withHeaders(js_headers.Headers(nativeCopy.headers)),
     );
   }
 
