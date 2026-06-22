@@ -42,6 +42,295 @@ void main() {
       expect(response.headers.get('content-type'), 'text/plain;charset=UTF-8');
     });
 
+    test('clones wrapped responses without aliasing body state', () async {
+      final upstream = Response(
+        web.Response(
+          'cloned response'.toJS,
+          web.ResponseInit(
+            status: 202,
+            statusText: 'Accepted',
+            headers: {'x-source': '1'}.jsify()! as web.HeadersInit,
+          ),
+        ),
+      );
+      final clone = Response(upstream);
+
+      expect(clone.status, 202);
+      expect(clone.statusText, 'Accepted');
+      expect(clone.headers.get('x-source'), '1');
+      expect(upstream.bodyUsed, isFalse);
+      expect(clone.bodyUsed, isFalse);
+
+      expect(await upstream.text(), 'cloned response');
+      expect(upstream.bodyUsed, isTrue);
+      expect(clone.bodyUsed, isFalse);
+      expect(await clone.text(), 'cloned response');
+      expect(clone.bodyUsed, isTrue);
+    });
+
+    test('applies init overrides when copying wrapped responses', () async {
+      final upstream = Response(
+        web.Response(
+          'source body'.toJS,
+          web.ResponseInit(
+            status: 202,
+            statusText: 'Accepted',
+            headers: {'x-source': '1'}.jsify()! as web.HeadersInit,
+          ),
+        ),
+      );
+
+      final response = Response(
+        upstream,
+        native.ResponseInit(
+          status: 201,
+          statusText: 'Created',
+          headers: {'x-init': '1'},
+        ),
+      );
+
+      expect(response.status, 201);
+      expect(response.statusText, 'Created');
+      expect(response.headers.get('x-source'), isNull);
+      expect(response.headers.get('x-init'), '1');
+      expect(upstream.bodyUsed, isFalse);
+      expect(await response.text(), 'source body');
+      expect(upstream.bodyUsed, isFalse);
+      expect(await upstream.text(), 'source body');
+    });
+
+    test('applies init overrides when copying native responses', () async {
+      final upstream = native.Response(
+        'native body',
+        native.ResponseInit(
+          status: 202,
+          statusText: 'Accepted',
+          headers: {'x-source': '1'},
+        ),
+      );
+
+      final response = Response(
+        upstream,
+        native.ResponseInit(
+          status: 201,
+          statusText: 'Created',
+          headers: {'x-init': '1'},
+        ),
+      );
+
+      expect(response.status, 201);
+      expect(response.statusText, 'Created');
+      expect(response.headers.get('x-source'), isNull);
+      expect(response.headers.get('x-init'), '1');
+      expect(upstream.bodyUsed, isFalse);
+      expect(await response.text(), 'native body');
+      expect(upstream.bodyUsed, isFalse);
+      expect(await upstream.text(), 'native body');
+    });
+
+    test(
+      'preserves deleted body-derived content-type when copying responses',
+      () async {
+        final wrapped = Response('wrapped body');
+        expect(wrapped.headers.get('content-type'), 'text/plain;charset=UTF-8');
+
+        wrapped.headers.delete('content-type');
+        final wrappedCopy = Response(
+          wrapped,
+          const native.ResponseInit(statusText: 'OK'),
+        );
+
+        expect(wrappedCopy.statusText, 'OK');
+        expect(wrappedCopy.headers.get('content-type'), isNull);
+        expect(wrapped.bodyUsed, isFalse);
+        expect(await wrappedCopy.text(), 'wrapped body');
+        expect(wrapped.bodyUsed, isFalse);
+        expect(await wrapped.text(), 'wrapped body');
+
+        final upstream = native.Response('native body');
+        upstream.headers.delete('content-type');
+        final nativeCopy = Response(
+          upstream,
+          const native.ResponseInit(statusText: 'OK'),
+        );
+
+        expect(nativeCopy.statusText, 'OK');
+        expect(nativeCopy.headers.get('content-type'), isNull);
+        expect(upstream.bodyUsed, isFalse);
+        expect(await nativeCopy.text(), 'native body');
+        expect(upstream.bodyUsed, isFalse);
+        expect(await upstream.text(), 'native body');
+      },
+    );
+
+    test('preserves web wrapper header mutations when copying', () async {
+      final upstream = Response(
+        web.Response(
+          'web wrapped body'.toJS,
+          web.ResponseInit(
+            status: 202,
+            statusText: 'Accepted',
+            headers:
+                {'content-type': 'text/plain', 'x-source': '1'}.jsify()!
+                    as web.HeadersInit,
+          ),
+        ),
+      );
+      upstream.headers
+        ..delete('content-type')
+        ..set('x-source', '2');
+
+      final response = Response(
+        upstream,
+        const native.ResponseInit(statusText: 'OK'),
+      );
+
+      expect(response.status, 202);
+      expect(response.statusText, 'OK');
+      expect(response.headers.get('content-type'), isNull);
+      expect(response.headers.get('x-source'), '2');
+      expect(upstream.bodyUsed, isFalse);
+      expect(await response.text(), 'web wrapped body');
+      expect(upstream.bodyUsed, isFalse);
+      expect(await upstream.text(), 'web wrapped body');
+    });
+
+    test('preserves fetched web metadata when copying with init', () async {
+      final upstream = await web.window
+          .fetch('data:text/plain,fetch%20metadata'.toJS)
+          .toDart;
+      final wrapped = Response(upstream);
+
+      expect(wrapped.url, startsWith('data:text/plain'));
+
+      final response = Response(
+        wrapped,
+        const native.ResponseInit(statusText: 'OK'),
+      );
+
+      expect(response.status, wrapped.status);
+      expect(response.statusText, 'OK');
+      expect(response.type, wrapped.type);
+      expect(response.url, wrapped.url);
+      expect(response.redirected, wrapped.redirected);
+      expect(wrapped.bodyUsed, isFalse);
+      expect(await response.text(), 'fetch metadata');
+      expect(wrapped.bodyUsed, isFalse);
+      expect(await wrapped.text(), 'fetch metadata');
+    });
+
+    test('uses effective web copy headers for formData', () async {
+      final upstream = web.Response(
+        'a=1'.toJS,
+        web.ResponseInit(
+          headers: {'content-type': 'text/plain'}.jsify()! as web.HeadersInit,
+        ),
+      );
+      final response = Response(
+        upstream,
+        native.ResponseInit(
+          headers: {'content-type': 'application/x-www-form-urlencoded'},
+        ),
+      );
+
+      final parsed = await response.formData();
+      expect((parsed.get('a') as TextMultipart).value, '1');
+      expect(upstream.bodyUsed, isFalse);
+
+      final wrapped = Response(
+        web.Response(
+          'b=2'.toJS,
+          web.ResponseInit(
+            headers: {'content-type': 'text/plain'}.jsify()! as web.HeadersInit,
+          ),
+        ),
+      );
+      wrapped.headers.set('content-type', 'application/x-www-form-urlencoded');
+      final wrappedCopy = Response(
+        wrapped,
+        const native.ResponseInit(statusText: 'OK'),
+      );
+
+      final wrappedParsed = await wrappedCopy.formData();
+      expect((wrappedParsed.get('b') as TextMultipart).value, '2');
+      expect(wrapped.bodyUsed, isFalse);
+    });
+
+    test('preserves zero-status web responses when copying with init', () {
+      final rawCopy = Response(
+        web.Response.error(),
+        native.ResponseInit(
+          statusText: 'Network Error',
+          headers: {'x-init': '1'},
+        ),
+      );
+
+      expect(rawCopy.status, 0);
+      expect(rawCopy.statusText, 'Network Error');
+      expect(rawCopy.ok, isFalse);
+      expect(rawCopy.type, native.ResponseType.error);
+      expect(rawCopy.headers.get('x-init'), '1');
+
+      final wrapped = Response.error();
+      final wrappedCopy = Response(
+        wrapped,
+        native.ResponseInit(
+          statusText: 'Network Error',
+          headers: {'x-init': '1'},
+        ),
+      );
+
+      expect(wrappedCopy.status, 0);
+      expect(wrappedCopy.statusText, 'Network Error');
+      expect(wrappedCopy.ok, isFalse);
+      expect(wrappedCopy.type, native.ResponseType.error);
+      expect(wrappedCopy.headers.get('x-init'), '1');
+    });
+
+    test('applies init overrides when copying web responses', () async {
+      final upstream = web.Response(
+        'web body'.toJS,
+        web.ResponseInit(
+          status: 202,
+          statusText: 'Accepted',
+          headers: {'x-source': '1'}.jsify()! as web.HeadersInit,
+        ),
+      );
+
+      final response = Response(
+        upstream,
+        native.ResponseInit(
+          status: 201,
+          statusText: 'Created',
+          headers: {'x-init': '1'},
+        ),
+      );
+
+      expect(response.status, 201);
+      expect(response.statusText, 'Created');
+      expect(response.headers.get('x-source'), isNull);
+      expect(response.headers.get('x-init'), '1');
+      expect(upstream.bodyUsed, isFalse);
+      expect(await response.text(), 'web body');
+      expect(upstream.bodyUsed, isFalse);
+      expect(
+        await upstream.text().toDart.then((text) => text.toDart),
+        'web body',
+      );
+    });
+
+    test('rejects copying consumed wrapped responses', () async {
+      final upstream = Response('used body');
+
+      expect(await upstream.text(), 'used body');
+      expect(upstream.bodyUsed, isTrue);
+      expect(() => Response(upstream), throwsStateError);
+      expect(
+        () => Response(upstream, const native.ResponseInit(status: 201)),
+        throwsStateError,
+      );
+    });
+
     test('clone tees a wrapped web.Response body', () async {
       final upstream = web.Response('cloned body'.toJS);
 

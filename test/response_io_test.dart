@@ -35,6 +35,213 @@ void main() {
       );
     });
 
+    test('clones wrapped responses without aliasing body state', () async {
+      final upstream = Response(
+        native.Response(
+          'cloned response',
+          native.ResponseInit(
+            status: 202,
+            statusText: 'Accepted',
+            headers: {'x-source': '1'},
+          ),
+        ),
+      );
+      final clone = Response(upstream);
+
+      expect(clone.status, 202);
+      expect(clone.statusText, 'Accepted');
+      expect(clone.headers.get('x-source'), '1');
+      expect(upstream.bodyUsed, isFalse);
+      expect(clone.bodyUsed, isFalse);
+
+      expect(await upstream.text(), 'cloned response');
+      expect(upstream.bodyUsed, isTrue);
+      expect(clone.bodyUsed, isFalse);
+      expect(await clone.text(), 'cloned response');
+      expect(clone.bodyUsed, isTrue);
+    });
+
+    test('applies init overrides when copying wrapped responses', () async {
+      final upstream = Response(
+        native.Response(
+          'source body',
+          native.ResponseInit(
+            status: 202,
+            statusText: 'Accepted',
+            headers: {'x-source': '1'},
+          ),
+        ),
+      );
+
+      final response = Response(
+        upstream,
+        native.ResponseInit(
+          status: 201,
+          statusText: 'Created',
+          headers: {'x-init': '1'},
+        ),
+      );
+
+      expect(response.status, io.HttpStatus.created);
+      expect(response.statusText, 'Created');
+      expect(response.headers.get('x-source'), isNull);
+      expect(response.headers.get('x-init'), '1');
+      expect(upstream.bodyUsed, isFalse);
+      expect(await response.text(), 'source body');
+      expect(upstream.bodyUsed, isFalse);
+      expect(await upstream.text(), 'source body');
+    });
+
+    test('applies init overrides when copying native responses', () async {
+      final upstream = native.Response(
+        'native body',
+        native.ResponseInit(
+          status: 202,
+          statusText: 'Accepted',
+          headers: {'x-source': '1'},
+        ),
+      );
+
+      final response = Response(
+        upstream,
+        native.ResponseInit(
+          status: 201,
+          statusText: 'Created',
+          headers: {'x-init': '1'},
+        ),
+      );
+
+      expect(response.status, io.HttpStatus.created);
+      expect(response.statusText, 'Created');
+      expect(response.headers.get('x-source'), isNull);
+      expect(response.headers.get('x-init'), '1');
+      expect(upstream.bodyUsed, isFalse);
+      expect(await response.text(), 'native body');
+      expect(upstream.bodyUsed, isFalse);
+      expect(await upstream.text(), 'native body');
+    });
+
+    test(
+      'preserves deleted body-derived content-type when copying responses',
+      () async {
+        final wrapped = Response('wrapped body');
+        expect(wrapped.headers.get('content-type'), 'text/plain;charset=UTF-8');
+
+        wrapped.headers.delete('content-type');
+        final wrappedCopy = Response(
+          wrapped,
+          const native.ResponseInit(statusText: 'OK'),
+        );
+
+        expect(wrappedCopy.statusText, 'OK');
+        expect(wrappedCopy.headers.get('content-type'), isNull);
+        expect(wrapped.bodyUsed, isFalse);
+        expect(await wrappedCopy.text(), 'wrapped body');
+        expect(wrapped.bodyUsed, isFalse);
+        expect(await wrapped.text(), 'wrapped body');
+
+        final upstream = native.Response('native body');
+        upstream.headers.delete('content-type');
+        final nativeCopy = Response(
+          upstream,
+          const native.ResponseInit(statusText: 'OK'),
+        );
+
+        expect(nativeCopy.statusText, 'OK');
+        expect(nativeCopy.headers.get('content-type'), isNull);
+        expect(upstream.bodyUsed, isFalse);
+        expect(await nativeCopy.text(), 'native body');
+        expect(upstream.bodyUsed, isFalse);
+        expect(await upstream.text(), 'native body');
+      },
+    );
+
+    test('preserves zero-status error responses when copying with init', () {
+      final wrapped = Response.error();
+      final wrappedCopy = Response(
+        wrapped,
+        native.ResponseInit(
+          statusText: 'Network Error',
+          headers: {'x-init': '1'},
+        ),
+      );
+
+      expect(wrappedCopy.status, 0);
+      expect(wrappedCopy.statusText, 'Network Error');
+      expect(wrappedCopy.ok, isFalse);
+      expect(wrappedCopy.type, native.ResponseType.error);
+      expect(wrappedCopy.headers.get('x-init'), '1');
+
+      final upstream = native.Response.error();
+      final nativeCopy = Response(
+        upstream,
+        native.ResponseInit(
+          statusText: 'Network Error',
+          headers: {'x-init': '1'},
+        ),
+      );
+
+      expect(nativeCopy.status, 0);
+      expect(nativeCopy.statusText, 'Network Error');
+      expect(nativeCopy.ok, isFalse);
+      expect(nativeCopy.type, native.ResponseType.error);
+      expect(nativeCopy.headers.get('x-init'), '1');
+    });
+
+    test('rejects copying consumed wrapped responses', () async {
+      final upstream = Response('used body');
+
+      expect(await upstream.text(), 'used body');
+      expect(upstream.bodyUsed, isTrue);
+      expect(() => Response(upstream), throwsStateError);
+      expect(
+        () => Response(upstream, const native.ResponseInit(status: 201)),
+        throwsStateError,
+      );
+    });
+
+    test(
+      'copies null-body HttpClientResponse wrappers with init overrides',
+      () async {
+        final server = await io.HttpServer.bind(
+          io.InternetAddress.loopbackIPv4,
+          0,
+        );
+        addTearDown(server.close);
+
+        server.listen((request) {
+          request.response
+            ..statusCode = io.HttpStatus.noContent
+            ..close();
+        });
+
+        final client = io.HttpClient();
+        addTearDown(client.close);
+
+        final httpRequest = await client.getUrl(
+          Uri.parse('http://${server.address.host}:${server.port}/empty'),
+        );
+        final httpResponse = await httpRequest.close();
+
+        final upstream = Response(httpResponse);
+
+        final response = Response(
+          upstream,
+          native.ResponseInit(
+            statusText: 'No Content',
+            headers: {'x-init': '1'},
+          ),
+        );
+
+        expect(response.status, io.HttpStatus.noContent);
+        expect(response.statusText, 'No Content');
+        expect(response.headers.get('x-source'), isNull);
+        expect(response.headers.get('x-init'), '1');
+        expect(response.body, isNull);
+        expect(await response.text(), '');
+      },
+    );
+
     test('copies raw HttpHeaders before appending body content-type', () async {
       final server = await io.HttpServer.bind(
         io.InternetAddress.loopbackIPv4,
@@ -151,8 +358,16 @@ void main() {
       final httpResponse = await httpRequest.close();
 
       final response = Response(httpResponse);
+      final copy = Response(
+        response,
+        const native.ResponseInit(statusText: 'OK'),
+      );
 
       expect(response.redirected, isTrue);
+      expect(copy.redirected, isTrue);
+      expect(copy.statusText, 'OK');
+      expect(await copy.text(), 'ok');
+      expect(response.bodyUsed, isFalse);
       expect(await response.text(), 'ok');
     });
 
