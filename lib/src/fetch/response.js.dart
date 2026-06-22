@@ -34,12 +34,13 @@ class Response implements native.Response {
   factory Response([Object? body, native.ResponseInit? init]) {
     final host = switch ((body, init)) {
       (final Response response, null) => response.clone()._host,
-      (final Response response, _) => NativeResponseHost(
-        _nativeResponseFromWrappedResponse(response, init),
+      (final Response response, _) => _responseHostFromWrappedResponse(
+        response,
+        init,
       ),
       (final web.Response response, null) => WebResponseHost(response),
-      (final web.Response response, _) => NativeResponseHost(
-        _nativeResponseFromWebResponse(response, init),
+      (final web.Response response, _) => WebResponseHost(
+        _webResponseFromWebResponse(response, init),
       ),
       (final native.Response response, null) => NativeResponseHost(
         response.clone(),
@@ -249,25 +250,47 @@ class Response implements native.Response {
     };
   }
 
-  static native.Response _nativeResponseFromWrappedResponse(
+  static ResponseHost _responseHostFromWrappedResponse(
+    Response response,
+    native.ResponseInit? init,
+  ) {
+    return switch (response._host) {
+      final WebResponseHost host => WebResponseHost(
+        _webResponseFromWebResponse(host.value, init),
+      ),
+      NativeResponseHost() => NativeResponseHost(
+        _nativeResponseFromNativeWrappedResponse(response, init),
+      ),
+    };
+  }
+
+  static web.Response _webResponseFromWebResponse(
+    web.Response response,
+    native.ResponseInit? init,
+  ) {
+    final source = response.clone();
+    return web.Response(
+      source.body,
+      web.ResponseInit(
+        status: init?.status ?? response.status,
+        statusText: init?.statusText ?? response.statusText,
+        headers: js_headers.Headers(init?.headers ?? response.headers).host,
+      ),
+    );
+  }
+
+  static native.Response _nativeResponseFromNativeWrappedResponse(
     Response response,
     native.ResponseInit? init,
   ) {
     return native.Response(
-      _bodyInitFromWrappedResponse(response),
+      response.body,
       native.ResponseInit(
         status: init?.status ?? response.status,
         statusText: init?.statusText ?? response.statusText,
         headers: init?.headers ?? js_headers.Headers(response.headers),
       ),
     );
-  }
-
-  static native.Response _nativeResponseFromWebResponse(
-    web.Response response,
-    native.ResponseInit? init,
-  ) {
-    return _nativeResponseFromWrappedResponse(Response(response), init);
   }
 
   static native.Response _nativeResponseFromNativeResponse(
@@ -282,17 +305,5 @@ class Response implements native.Response {
         headers: init?.headers ?? js_headers.Headers(response.headers),
       ),
     );
-  }
-
-  static BodyInit? _bodyInitFromWrappedResponse(Response response) {
-    return switch (response._host) {
-      final WebResponseHost host => switch (host.value.clone().body) {
-        final web.ReadableStream stream => dartByteStreamFromWebReadableStream(
-          stream,
-        ),
-        null => null,
-      },
-      NativeResponseHost() => response.body,
-    };
   }
 }
