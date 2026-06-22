@@ -121,6 +121,41 @@ void main() {
       expect(await upstream.text(), 'native body');
     });
 
+    test(
+      'preserves deleted body-derived content-type when copying responses',
+      () async {
+        final wrapped = Response('wrapped body');
+        expect(wrapped.headers.get('content-type'), 'text/plain;charset=UTF-8');
+
+        wrapped.headers.delete('content-type');
+        final wrappedCopy = Response(
+          wrapped,
+          const native.ResponseInit(statusText: 'OK'),
+        );
+
+        expect(wrappedCopy.statusText, 'OK');
+        expect(wrappedCopy.headers.get('content-type'), isNull);
+        expect(wrapped.bodyUsed, isFalse);
+        expect(await wrappedCopy.text(), 'wrapped body');
+        expect(wrapped.bodyUsed, isFalse);
+        expect(await wrapped.text(), 'wrapped body');
+
+        final upstream = native.Response('native body');
+        upstream.headers.delete('content-type');
+        final nativeCopy = Response(
+          upstream,
+          const native.ResponseInit(statusText: 'OK'),
+        );
+
+        expect(nativeCopy.statusText, 'OK');
+        expect(nativeCopy.headers.get('content-type'), isNull);
+        expect(upstream.bodyUsed, isFalse);
+        expect(await nativeCopy.text(), 'native body');
+        expect(upstream.bodyUsed, isFalse);
+        expect(await upstream.text(), 'native body');
+      },
+    );
+
     test('rejects copying consumed wrapped responses', () async {
       final upstream = Response('used body');
 

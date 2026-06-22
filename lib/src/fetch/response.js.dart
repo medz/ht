@@ -287,13 +287,14 @@ class Response implements native.Response {
     Response response,
     native.ResponseInit? init,
   ) {
-    return native.Response(
+    final sourceHeaders = js_headers.Headers(response.headers);
+    return _nativeResponseFromCopy(
       response.body,
-      native.ResponseInit(
-        status: init?.status ?? response.status,
-        statusText: init?.statusText ?? response.statusText,
-        headers: init?.headers ?? js_headers.Headers(response.headers),
-      ),
+      status: init?.status ?? response.status,
+      statusText: init?.statusText ?? response.statusText,
+      headers: init?.headers ?? sourceHeaders,
+      preserveMissingContentType:
+          init?.headers == null && !sourceHeaders.has('content-type'),
     );
   }
 
@@ -301,13 +302,35 @@ class Response implements native.Response {
     native.Response response,
     native.ResponseInit? init,
   ) {
-    return native.Response(
+    final sourceHeaders = js_headers.Headers(response.headers);
+    return _nativeResponseFromCopy(
       response.body,
+      status: init?.status ?? response.status,
+      statusText: init?.statusText ?? response.statusText,
+      headers: init?.headers ?? sourceHeaders,
+      preserveMissingContentType:
+          init?.headers == null && !sourceHeaders.has('content-type'),
+    );
+  }
+
+  static native.Response _nativeResponseFromCopy(
+    Body? body, {
+    required int status,
+    required String statusText,
+    required Object? headers,
+    required bool preserveMissingContentType,
+  }) {
+    final response = native.Response(
+      body,
       native.ResponseInit(
-        status: init?.status ?? response.status,
-        statusText: init?.statusText ?? response.statusText,
-        headers: init?.headers ?? js_headers.Headers(response.headers),
+        status: status,
+        statusText: statusText,
+        headers: headers,
       ),
     );
+    if (preserveMissingContentType) {
+      response.headers.delete('content-type');
+    }
+    return response;
   }
 }
