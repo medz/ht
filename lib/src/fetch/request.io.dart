@@ -334,6 +334,7 @@ class Request implements native.Request {
   }
 
   static bool _allowsRequestBody(String method) {
-    return method != 'GET' && method != 'HEAD';
+    final upper = method.toUpperCase();
+    return upper != 'GET' && upper != 'HEAD';
   }
 }

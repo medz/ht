@@ -233,6 +233,45 @@ void main() {
     );
 
     test(
+      'rebuilds wrapped GET requests with lowercase method override',
+      () async {
+        final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+        addTearDown(server.close);
+        final port = server.port;
+
+        final requestFuture = server.first;
+
+        final client = HttpClient();
+        addTearDown(client.close);
+
+        final clientRequest = await client.get(
+          InternetAddress.loopbackIPv4.host,
+          port,
+          '/bodyless-override',
+        );
+        final clientResponseFuture = clientRequest.close();
+
+        final httpRequest = await requestFuture;
+        final upstream = io_request.Request(httpRequest);
+        final rebuilt = io_request.Request(
+          upstream,
+          native.RequestInit(method: 'get'),
+        );
+
+        expect(rebuilt.method, 'GET');
+        expect(rebuilt.body, isNull);
+        expect(await rebuilt.text(), '');
+
+        httpRequest.response
+          ..statusCode = HttpStatus.noContent
+          ..close();
+
+        final clientResponse = await clientResponseFuture;
+        await clientResponse.drain<void>();
+      },
+    );
+
+    test(
       'rejects overriding wrapped bodyful requests to bodyless methods',
       () async {
         final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
