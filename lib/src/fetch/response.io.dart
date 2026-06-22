@@ -232,7 +232,7 @@ class Response implements native.Response {
     native.ResponseInit? init,
   ) {
     return native.Response(
-      response.body,
+      response._bodyForNativeClone(),
       native.ResponseInit(
         status: init?.status ?? response.status,
         statusText: init?.statusText ?? response.statusText,

@@ -133,6 +133,48 @@ void main() {
       );
     });
 
+    test(
+      'copies null-body HttpClientResponse wrappers with init overrides',
+      () async {
+        final server = await io.HttpServer.bind(
+          io.InternetAddress.loopbackIPv4,
+          0,
+        );
+        addTearDown(server.close);
+
+        server.listen((request) {
+          request.response
+            ..statusCode = io.HttpStatus.noContent
+            ..close();
+        });
+
+        final client = io.HttpClient();
+        addTearDown(client.close);
+
+        final httpRequest = await client.getUrl(
+          Uri.parse('http://${server.address.host}:${server.port}/empty'),
+        );
+        final httpResponse = await httpRequest.close();
+
+        final upstream = Response(httpResponse);
+
+        final response = Response(
+          upstream,
+          native.ResponseInit(
+            statusText: 'No Content',
+            headers: {'x-init': '1'},
+          ),
+        );
+
+        expect(response.status, io.HttpStatus.noContent);
+        expect(response.statusText, 'No Content');
+        expect(response.headers.get('x-source'), isNull);
+        expect(response.headers.get('x-init'), '1');
+        expect(response.body, isNull);
+        expect(await response.text(), '');
+      },
+    );
+
     test('copies raw HttpHeaders before appending body content-type', () async {
       final server = await io.HttpServer.bind(
         io.InternetAddress.loopbackIPv4,
