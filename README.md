@@ -40,7 +40,7 @@ Future<void> main() async {
   final request = Request(
     Uri.parse('https://api.example.com/tasks'),
     RequestInit(
-      method: HttpMethod.post,
+      method: 'POST',
       headers: Headers({'content-type': 'application/json; charset=utf-8'}),
       body: '{"title":"rewrite ht"}',
     ),
@@ -119,7 +119,7 @@ Future<void> main() async {
   final body = block.Block(<Object>['hello'], type: 'text/plain');
   final request = Request(
     Uri.parse('https://example.com'),
-    RequestInit(method: HttpMethod.post, body: body),
+    RequestInit(method: 'POST', body: body),
   );
 
   print(await request.text());                  // hello

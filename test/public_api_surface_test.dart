@@ -4,11 +4,15 @@ import 'package:test/test.dart';
 
 void main() {
   test('public API symbols are importable and usable', () async {
-    const method = HttpMethod.post;
+    const method = 'POST';
+    const protocolMethod = HttpMethod.post;
     const status = HttpStatus.ok;
     const version = HttpVersion.http11;
     final mime = MimeType.json;
-    final requestInit = RequestInit(method: method);
+    final requestInit = RequestInit(
+      method: method,
+      priority: RequestPriority.high,
+    );
     final responseInit = ResponseInit(status: status);
 
     final headers = Headers({'content-type': mime.toString()});
@@ -28,13 +32,14 @@ void main() {
 
     final Object init = 'x';
 
-    expect(method.toString(), 'POST');
+    expect(protocolMethod.toString(), 'POST');
     expect(version.value, 'HTTP/1.1');
     expect(mime.essence, 'application/json');
     expect(params.get('a'), '1');
     expect(await blob.text(), 'hello');
     expect(file.name, 'hello.txt');
-    expect(requestInit.method, HttpMethod.post);
+    expect(requestInit.method, 'POST');
+    expect(requestInit.priority, RequestPriority.high);
     expect(responseInit.status, 200);
     expect(request.headers.has('content-type'), isTrue);
     expect(await multipart.bytes(), isNotEmpty);

@@ -8,7 +8,6 @@ import 'package:web/web.dart' as web;
 
 import '../_internal/web_fetch_utils.dart' as web_fetch;
 import '../_internal/web_stream_bridge.dart';
-import '../core/http_method.dart';
 import 'body.dart';
 import 'blob.dart';
 import 'form_data.native.dart';
@@ -141,9 +140,9 @@ class Request implements native.Request {
   }
 
   @override
-  HttpMethod get method {
+  String get method {
     return switch (_host) {
-      final WebRequestHost host => HttpMethod.parse(host.value.method),
+      final WebRequestHost host => host.value.method,
       final NativeRequestHost host => host.value.method,
     };
   }
@@ -153,6 +152,14 @@ class Request implements native.Request {
     return switch (_host) {
       final WebRequestHost host => _requestModeFromValue(host.value.mode),
       final NativeRequestHost host => host.value.mode,
+    };
+  }
+
+  @override
+  native.RequestPriority get priority {
+    return switch (_host) {
+      final WebRequestHost _ => native.RequestPriority.auto,
+      final NativeRequestHost host => host.value.priority,
     };
   }
 
@@ -286,6 +293,7 @@ class Request implements native.Request {
         integrity: integrity,
         keepalive: keepalive,
         duplex: duplex,
+        priority: priority,
       );
     }
 
@@ -332,6 +340,7 @@ class Request implements native.Request {
         integrity: init?.integrity ?? request.integrity,
         keepalive: init?.keepalive ?? request.keepalive,
         duplex: init?.duplex ?? request.duplex,
+        priority: init?.priority ?? request.priority,
       );
     }
 
@@ -374,6 +383,7 @@ class Request implements native.Request {
         integrity: init?.integrity ?? wrapped.integrity,
         keepalive: init?.keepalive ?? wrapped.keepalive,
         duplex: init?.duplex ?? wrapped.duplex,
+        priority: init?.priority ?? wrapped.priority,
       ),
     );
   }

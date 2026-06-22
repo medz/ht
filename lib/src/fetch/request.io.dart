@@ -1,7 +1,6 @@
 import 'dart:io' as io;
 import 'dart:typed_data';
 
-import '../core/http_method.dart';
 import 'body.dart';
 import 'blob.dart';
 import 'form_data.native.dart';
@@ -122,9 +121,9 @@ class Request implements native.Request {
   }
 
   @override
-  HttpMethod get method {
+  String get method {
     return switch (_host) {
-      final HttpRequestHost host => HttpMethod.parse(host.value.method),
+      final HttpRequestHost host => host.value.method,
       final NativeRequestHost host => host.value.method,
     };
   }
@@ -134,6 +133,14 @@ class Request implements native.Request {
     return switch (_host) {
       final HttpRequestHost _ => native.RequestMode.cors,
       final NativeRequestHost host => host.value.mode,
+    };
+  }
+
+  @override
+  native.RequestPriority get priority {
+    return switch (_host) {
+      final HttpRequestHost _ => native.RequestPriority.auto,
+      final NativeRequestHost host => host.value.priority,
     };
   }
 
@@ -243,6 +250,7 @@ class Request implements native.Request {
         integrity: integrity,
         keepalive: keepalive,
         duplex: duplex,
+        priority: priority,
       );
     }
 
@@ -253,7 +261,7 @@ class Request implements native.Request {
       HttpRequestHost() => Request(
         native.Request(
           url,
-          init(body: method.allowsRequestBody ? body?.clone() : null),
+          init(body: _allowsRequestBody(method) ? body?.clone() : null),
         ),
       ),
     };
@@ -295,6 +303,7 @@ class Request implements native.Request {
         integrity: init?.integrity ?? request.integrity,
         keepalive: init?.keepalive ?? request.keepalive,
         duplex: init?.duplex ?? request.duplex,
+        priority: init?.priority ?? request.priority,
       );
     }
 
@@ -314,13 +323,17 @@ class Request implements native.Request {
     return native.Request(request.url, requestInit(body: init?.body ?? body));
   }
 
-  static Body? _bodyFromWrappedRequest(Request request, HttpMethod method) {
-    if (!method.allowsRequestBody &&
+  static Body? _bodyFromWrappedRequest(Request request, String method) {
+    if (!_allowsRequestBody(method) &&
         request._host is HttpRequestHost &&
-        !request.method.allowsRequestBody) {
+        !_allowsRequestBody(request.method)) {
       return null;
     }
 
     return request.body;
+  }
+
+  static bool _allowsRequestBody(String method) {
+    return method != 'GET' && method != 'HEAD';
   }
 }

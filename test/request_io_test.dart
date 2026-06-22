@@ -3,7 +3,6 @@ library;
 
 import 'dart:io';
 
-import 'package:ht/src/core/http_method.dart';
 import 'package:ht/src/fetch/request.io.dart' as io_request;
 import 'package:ht/src/fetch/request.native.dart' as native;
 import 'package:ht/src/fetch/url_search_params.dart';
@@ -15,7 +14,7 @@ void main() {
       final request = io_request.Request(
         native.Request(
           'https://example.com',
-          native.RequestInit(method: HttpMethod.post, body: 'payload'),
+          native.RequestInit(method: 'POST', body: 'payload'),
         ),
       );
 
@@ -25,7 +24,7 @@ void main() {
     test('sets default content-type for native construction body init', () {
       final textRequest = io_request.Request(
         'https://example.com/text',
-        native.RequestInit(method: HttpMethod.post, body: 'hello'),
+        native.RequestInit(method: 'POST', body: 'hello'),
       );
       expect(
         textRequest.headers.get('content-type'),
@@ -34,10 +33,7 @@ void main() {
 
       final paramsRequest = io_request.Request(
         'https://example.com/form',
-        native.RequestInit(
-          method: HttpMethod.post,
-          body: URLSearchParams({'a': '1'}),
-        ),
+        native.RequestInit(method: 'POST', body: URLSearchParams({'a': '1'})),
       );
       expect(
         paramsRequest.headers.get('content-type'),
@@ -66,7 +62,7 @@ void main() {
       final request = native.Request(
         'https://example.com/text',
         native.RequestInit(
-          method: HttpMethod.post,
+          method: 'POST',
           headers: httpRequest.headers,
           body: 'hello',
         ),
@@ -86,7 +82,7 @@ void main() {
     test('clone preserves deleted body-derived content-type', () async {
       final request = io_request.Request(
         'https://example.com/clone',
-        native.RequestInit(method: HttpMethod.post, body: 'hello'),
+        native.RequestInit(method: 'POST', body: 'hello'),
       );
       expect(request.headers.get('content-type'), 'text/plain;charset=UTF-8');
 
@@ -102,7 +98,7 @@ void main() {
     test('init override preserves deleted body-derived content-type', () async {
       final request = io_request.Request(
         'https://example.com/rebuild',
-        native.RequestInit(method: HttpMethod.post, body: 'hello'),
+        native.RequestInit(method: 'POST', body: 'hello'),
       );
       request.headers.delete('content-type');
 
@@ -123,10 +119,11 @@ void main() {
         native.Request(
           'https://example.com/base',
           native.RequestInit(
-            method: HttpMethod.post,
+            method: 'POST',
             headers: {'x-upstream': '1'},
             body: 'payload',
             cache: native.RequestCache.reload,
+            priority: native.RequestPriority.high,
           ),
         ),
       );
@@ -134,18 +131,31 @@ void main() {
       final request = io_request.Request(
         upstream,
         native.RequestInit(
-          method: HttpMethod.put,
+          method: 'PUT',
           headers: {'x-override': '2'},
           cache: native.RequestCache.noStore,
+          priority: native.RequestPriority.low,
         ),
       );
 
       expect(request.url, 'https://example.com/base');
-      expect(request.method, HttpMethod.put);
+      expect(request.method, 'PUT');
       expect(request.headers.get('x-upstream'), isNull);
       expect(request.headers.get('x-override'), '2');
       expect(request.cache, native.RequestCache.noStore);
+      expect(request.priority, native.RequestPriority.low);
       expect(await request.text(), 'payload');
+    });
+
+    test('preserves native request priority through clone', () {
+      final request = io_request.Request(
+        'https://example.com/priority',
+        native.RequestInit(priority: native.RequestPriority.high),
+      );
+      final clone = request.clone();
+
+      expect(request.priority, native.RequestPriority.high);
+      expect(clone.priority, native.RequestPriority.high);
     });
 
     test('clones wrapped requests without init by teeing the body', () async {
@@ -209,7 +219,7 @@ void main() {
         final upstream = io_request.Request(httpRequest);
         final clone = io_request.Request(upstream);
 
-        expect(clone.method, HttpMethod.get);
+        expect(clone.method, 'GET');
         expect(clone.body, isNull);
         expect(await clone.text(), '');
 
@@ -246,10 +256,7 @@ void main() {
         final upstream = io_request.Request(httpRequest);
 
         expect(
-          () => io_request.Request(
-            upstream,
-            native.RequestInit(method: HttpMethod.get),
-          ),
+          () => io_request.Request(upstream, native.RequestInit(method: 'GET')),
           throwsArgumentError,
         );
 
@@ -272,7 +279,7 @@ void main() {
           native.Request(
             'https://example.com/base',
             native.RequestInit(
-              method: HttpMethod.post,
+              method: 'POST',
               headers: {'x-upstream': '1'},
               body: 'payload',
             ),
@@ -288,7 +295,7 @@ void main() {
         );
 
         expect(rebuilt.url, 'https://example.com/base');
-        expect(rebuilt.method, HttpMethod.post);
+        expect(rebuilt.method, 'POST');
         expect(rebuilt.headers.get('x-upstream'), isNull);
         expect(rebuilt.headers.get('x-override'), '2');
         expect(rebuilt.bodyUsed, isFalse);
@@ -301,7 +308,7 @@ void main() {
       expect(
         () => io_request.Request(
           'https://example.com',
-          native.RequestInit(method: HttpMethod.head, body: 'payload'),
+          native.RequestInit(method: 'HEAD', body: 'payload'),
         ),
         throwsArgumentError,
       );
@@ -330,10 +337,11 @@ void main() {
       final httpRequest = await requestFuture;
       final request = io_request.Request(httpRequest);
 
-      expect(request.method, HttpMethod.post);
+      expect(request.method, 'POST');
       expect(request.url, 'http://127.0.0.1:$port/upload?q=1');
       expect(request.keepalive, isTrue);
       expect(request.cache, native.RequestCache.default_);
+      expect(request.priority, native.RequestPriority.auto);
       expect(request.headers.get('content-type'), 'text/plain;charset=utf-8');
       expect(request.headers.get('x-id'), '1');
       expect(request.bodyUsed, isFalse);
