@@ -163,6 +163,38 @@ void main() {
       },
     );
 
+    test('preserves web wrapper header mutations when copying', () async {
+      final upstream = Response(
+        web.Response(
+          'web wrapped body'.toJS,
+          web.ResponseInit(
+            status: 202,
+            statusText: 'Accepted',
+            headers:
+                {'content-type': 'text/plain', 'x-source': '1'}.jsify()!
+                    as web.HeadersInit,
+          ),
+        ),
+      );
+      upstream.headers
+        ..delete('content-type')
+        ..set('x-source', '2');
+
+      final response = Response(
+        upstream,
+        const native.ResponseInit(statusText: 'OK'),
+      );
+
+      expect(response.status, 202);
+      expect(response.statusText, 'OK');
+      expect(response.headers.get('content-type'), isNull);
+      expect(response.headers.get('x-source'), '2');
+      expect(upstream.bodyUsed, isFalse);
+      expect(await response.text(), 'web wrapped body');
+      expect(upstream.bodyUsed, isFalse);
+      expect(await upstream.text(), 'web wrapped body');
+    });
+
     test('applies init overrides when copying web responses', () async {
       final upstream = web.Response(
         'web body'.toJS,

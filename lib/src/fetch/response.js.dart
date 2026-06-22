@@ -260,7 +260,11 @@ class Response implements native.Response {
   ) {
     return switch (response._host) {
       final WebResponseHost host => WebResponseHost(
-        _webResponseFromWebResponse(host.value, init),
+        _webResponseFromWebResponse(
+          host.value,
+          init,
+          sourceHeaders: js_headers.Headers(response.headers),
+        ),
       ),
       NativeResponseHost() => NativeResponseHost(
         _nativeResponseFromNativeWrappedResponse(response, init),
@@ -270,15 +274,18 @@ class Response implements native.Response {
 
   static web.Response _webResponseFromWebResponse(
     web.Response response,
-    native.ResponseInit? init,
-  ) {
+    native.ResponseInit? init, {
+    Object? sourceHeaders,
+  }) {
     final source = response.clone();
     return web.Response(
       source.body,
       web.ResponseInit(
         status: init?.status ?? response.status,
         statusText: init?.statusText ?? response.statusText,
-        headers: js_headers.Headers(init?.headers ?? response.headers).host,
+        headers: js_headers.Headers(
+          init?.headers ?? sourceHeaders ?? response.headers,
+        ).host,
       ),
     );
   }
