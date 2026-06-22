@@ -33,9 +33,20 @@ class Response implements native.Response {
 
   factory Response([Object? body, native.ResponseInit? init]) {
     final host = switch ((body, init)) {
-      (final Response response, _) => response._host,
+      (final Response response, null) => response.clone()._host,
+      (final Response response, _) => NativeResponseHost(
+        _nativeResponseFromWrappedResponse(response, init),
+      ),
       (final web.Response response, null) => WebResponseHost(response),
-      (final native.Response response, _) => NativeResponseHost(response),
+      (final web.Response response, _) => NativeResponseHost(
+        _nativeResponseFromWebResponse(response, init),
+      ),
+      (final native.Response response, null) => NativeResponseHost(
+        response.clone(),
+      ),
+      (final native.Response response, _) => NativeResponseHost(
+        _nativeResponseFromNativeResponse(response, init),
+      ),
       _ => NativeResponseHost(native.Response(body, init)),
     };
 
@@ -235,6 +246,48 @@ class Response implements native.Response {
       'opaque' => native.ResponseType.opaque,
       'opaqueredirect' => native.ResponseType.opaqueRedirect,
       _ => native.ResponseType.default_,
+    };
+  }
+
+  static native.Response _nativeResponseFromWrappedResponse(
+    Response response,
+    native.ResponseInit? init,
+  ) {
+    return native.Response(
+      _bodyFromWrappedResponse(response),
+      native.ResponseInit(
+        status: init?.status ?? response.status,
+        statusText: init?.statusText ?? response.statusText,
+        headers: init?.headers ?? js_headers.Headers(response.headers),
+      ),
+    );
+  }
+
+  static native.Response _nativeResponseFromWebResponse(
+    web.Response response,
+    native.ResponseInit? init,
+  ) {
+    return _nativeResponseFromWrappedResponse(Response(response), init);
+  }
+
+  static native.Response _nativeResponseFromNativeResponse(
+    native.Response response,
+    native.ResponseInit? init,
+  ) {
+    return native.Response(
+      response.body,
+      native.ResponseInit(
+        status: init?.status ?? response.status,
+        statusText: init?.statusText ?? response.statusText,
+        headers: init?.headers ?? js_headers.Headers(response.headers),
+      ),
+    );
+  }
+
+  static Body? _bodyFromWrappedResponse(Response response) {
+    return switch (response._host) {
+      final WebResponseHost host => Response(host.value.clone()).body,
+      NativeResponseHost() => response.body,
     };
   }
 }
