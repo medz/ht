@@ -254,7 +254,7 @@ class Response implements native.Response {
     native.ResponseInit? init,
   ) {
     return native.Response(
-      _bodyFromWrappedResponse(response),
+      _bodyInitFromWrappedResponse(response),
       native.ResponseInit(
         status: init?.status ?? response.status,
         statusText: init?.statusText ?? response.statusText,
@@ -284,9 +284,14 @@ class Response implements native.Response {
     );
   }
 
-  static Body? _bodyFromWrappedResponse(Response response) {
+  static BodyInit? _bodyInitFromWrappedResponse(Response response) {
     return switch (response._host) {
-      final WebResponseHost host => Response(host.value.clone()).body,
+      final WebResponseHost host => switch (host.value.clone().body) {
+        final web.ReadableStream stream => dartByteStreamFromWebReadableStream(
+          stream,
+        ),
+        null => null,
+      },
       NativeResponseHost() => response.body,
     };
   }

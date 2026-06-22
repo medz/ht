@@ -232,7 +232,7 @@ class Response implements native.Response {
     native.ResponseInit? init,
   ) {
     return native.Response(
-      response._bodyForNativeClone(),
+      response._bodyForNativeCopy(),
       native.ResponseInit(
         status: init?.status ?? response.status,
         statusText: init?.statusText ?? response.statusText,
@@ -253,5 +253,13 @@ class Response implements native.Response {
         headers: init?.headers ?? io_headers.Headers(response.headers),
       ),
     );
+  }
+
+  Body? _bodyForNativeCopy() {
+    if (!_statusAllowsBody(status)) {
+      return null;
+    }
+
+    return body;
   }
 }
