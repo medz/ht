@@ -6,6 +6,7 @@ import 'dart:io' as io;
 
 import 'package:ht/src/fetch/body.dart';
 import 'package:ht/src/fetch/blob.io.dart' as io_blob;
+import 'package:ht/src/fetch/file.dart' as fetch_file;
 import 'package:test/test.dart';
 
 void main() {
@@ -26,6 +27,30 @@ void main() {
       expect(blob.size, 11);
       expect(blob.type, 'text/plain');
       expect(await blob.text(), 'hello world');
+    });
+
+    test('normalizes MIME type inputs', () {
+      expect(
+        io_blob.Blob(<Object>['x'], 'TEXT/PLAIN;Charset=UTF-8').type,
+        'text/plain;charset=utf-8',
+      );
+      expect(io_blob.Blob(<Object>['x'], 'NOT A MIME').type, 'not a mime');
+      expect(io_blob.Blob(<Object>['x'], 'text/π').type, isEmpty);
+      expect(io_blob.Blob(<Object>['x'], 'text/plain\nx').type, isEmpty);
+
+      final blob = io_blob.Blob(<Object>['payload'], 'text/plain');
+      expect(blob.slice(0, 1).type, isEmpty);
+      expect(blob.slice(0, 1, 'TEXT/HTML').type, 'text/html');
+      expect(blob.slice(0, 1, 'text/π').type, isEmpty);
+
+      expect(
+        fetch_file.File(<Object>['x'], 'x.txt', type: 'TEXT/PLAIN').type,
+        'text/plain',
+      );
+      expect(
+        fetch_file.File(<Object>['x'], 'x.txt', type: 'text/π').type,
+        isEmpty,
+      );
     });
 
     test(
