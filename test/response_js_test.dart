@@ -277,6 +277,23 @@ void main() {
       final wrappedParsed = await wrappedCopy.formData();
       expect((wrappedParsed.get('b') as TextMultipart).value, '2');
       expect(wrapped.bodyUsed, isFalse);
+
+      final mutableCopy = Response(
+        web.Response(
+          'c=3'.toJS,
+          web.ResponseInit(
+            headers: {'content-type': 'text/plain'}.jsify()! as web.HeadersInit,
+          ),
+        ),
+        const native.ResponseInit(statusText: 'OK'),
+      );
+      mutableCopy.headers.set(
+        'content-type',
+        'application/x-www-form-urlencoded',
+      );
+
+      final mutableParsed = await mutableCopy.formData();
+      expect((mutableParsed.get('c') as TextMultipart).value, '3');
     });
 
     test('preserves zero-status web responses when copying with init', () {

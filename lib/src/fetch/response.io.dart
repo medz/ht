@@ -22,9 +22,8 @@ final class NativeResponseHost extends ResponseHost<native.Response> {
   const NativeResponseHost(super.value);
 }
 
-final class _ResponseSnapshot {
-  _ResponseSnapshot({
-    required this.headers,
+final class _ResponseMetadata {
+  _ResponseMetadata({
     required this.redirected,
     required this.status,
     required this.statusText,
@@ -32,12 +31,11 @@ final class _ResponseSnapshot {
     required this.url,
   });
 
-  factory _ResponseSnapshot.from(
+  factory _ResponseMetadata.from(
     native.Response response, [
     native.ResponseInit? init,
   ]) {
-    return _ResponseSnapshot(
-      headers: io_headers.Headers(init?.headers ?? response.headers),
+    return _ResponseMetadata(
       redirected: response.redirected,
       status: init?.status ?? response.status,
       statusText: init?.statusText ?? response.statusText,
@@ -46,27 +44,20 @@ final class _ResponseSnapshot {
     );
   }
 
-  final io_headers.Headers headers;
   final bool redirected;
   final int status;
   final String statusText;
   final native.ResponseType type;
   final String url;
-
-  _ResponseSnapshot withHeaders(io_headers.Headers headers) {
-    return _ResponseSnapshot(
-      headers: headers,
-      redirected: redirected,
-      status: status,
-      statusText: statusText,
-      type: type,
-      url: url,
-    );
-  }
 }
 
 class Response implements native.Response {
-  Response._(this._host, [this._snapshot]);
+  Response._(
+    this._host, {
+    _ResponseMetadata? metadata,
+    io_headers.Headers? headers,
+  }) : _metadata = metadata,
+       _headers = headers;
 
   factory Response([Object? body, native.ResponseInit? init]) {
     return switch ((body, init)) {
@@ -100,7 +91,7 @@ class Response implements native.Response {
   }
 
   final ResponseHost _host;
-  final _ResponseSnapshot? _snapshot;
+  final _ResponseMetadata? _metadata;
   io_headers.Headers? _headers;
   Body? _body;
 
@@ -108,9 +99,6 @@ class Response implements native.Response {
   io_headers.Headers get headers {
     final headers = _headers;
     if (headers != null) return headers;
-
-    final snapshotHeaders = _snapshot?.headers;
-    if (snapshotHeaders != null) return _headers = snapshotHeaders;
 
     return _headers = switch (_host) {
       final HttpClientResponseHost host => io_headers.Headers(
@@ -136,8 +124,8 @@ class Response implements native.Response {
 
   @override
   bool get ok {
-    final snapshot = _snapshot;
-    if (snapshot != null) return HttpStatus.isSuccess(snapshot.status);
+    final metadata = _metadata;
+    if (metadata != null) return HttpStatus.isSuccess(metadata.status);
 
     return switch (_host) {
       final HttpClientResponseHost host => HttpStatus.isSuccess(
@@ -149,8 +137,8 @@ class Response implements native.Response {
 
   @override
   bool get redirected {
-    final snapshot = _snapshot;
-    if (snapshot != null) return snapshot.redirected;
+    final metadata = _metadata;
+    if (metadata != null) return metadata.redirected;
 
     return switch (_host) {
       final HttpClientResponseHost host => host.value.redirects.isNotEmpty,
@@ -160,8 +148,8 @@ class Response implements native.Response {
 
   @override
   int get status {
-    final snapshot = _snapshot;
-    if (snapshot != null) return snapshot.status;
+    final metadata = _metadata;
+    if (metadata != null) return metadata.status;
 
     return switch (_host) {
       final HttpClientResponseHost host => host.value.statusCode,
@@ -171,8 +159,8 @@ class Response implements native.Response {
 
   @override
   String get statusText {
-    final snapshot = _snapshot;
-    if (snapshot != null) return snapshot.statusText;
+    final metadata = _metadata;
+    if (metadata != null) return metadata.statusText;
 
     return switch (_host) {
       final HttpClientResponseHost host => host.value.reasonPhrase,
@@ -182,8 +170,8 @@ class Response implements native.Response {
 
   @override
   native.ResponseType get type {
-    final snapshot = _snapshot;
-    if (snapshot != null) return snapshot.type;
+    final metadata = _metadata;
+    if (metadata != null) return metadata.type;
 
     return switch (_host) {
       final HttpClientResponseHost _ => native.ResponseType.default_,
@@ -193,8 +181,8 @@ class Response implements native.Response {
 
   @override
   String get url {
-    final snapshot = _snapshot;
-    if (snapshot != null) return snapshot.url;
+    final metadata = _metadata;
+    if (metadata != null) return metadata.url;
 
     return switch (_host) {
       final HttpClientResponseHost _ => '',
@@ -261,11 +249,12 @@ class Response implements native.Response {
 
   @override
   Response clone() {
-    final snapshot = _ResponseSnapshot.from(this);
+    final metadata = _ResponseMetadata.from(this);
     return switch (_host) {
       final NativeResponseHost host => Response._(
         NativeResponseHost(host.value.clone()),
-        snapshot,
+        metadata: metadata,
+        headers: io_headers.Headers(headers),
       ),
       final HttpClientResponseHost _ => Response._(
         NativeResponseHost(
@@ -278,7 +267,7 @@ class Response implements native.Response {
             ),
           ),
         ),
-        snapshot,
+        metadata: metadata,
       ),
     };
   }
@@ -321,43 +310,48 @@ class Response implements native.Response {
     required ResponseHost Function() cloneHost,
     required Body? Function() body,
   }) {
-    final snapshot = _ResponseSnapshot.from(response, init);
-    if (init?.status == null && snapshot.status == 0) {
-      return Response._(cloneHost(), snapshot);
+    final metadata = _ResponseMetadata.from(response, init);
+    final sourceHeaders = io_headers.Headers(response.headers);
+    final effectiveHeaders = io_headers.Headers(init?.headers ?? sourceHeaders);
+    if (init?.status == null && metadata.status == 0) {
+      return Response._(
+        cloneHost(),
+        metadata: metadata,
+        headers: effectiveHeaders,
+      );
     }
 
     final nativeCopy = _nativeResponseFromCopy(
       body(),
-      snapshot: snapshot,
+      metadata: metadata,
+      headers: effectiveHeaders,
       preserveMissingContentType: _shouldPreserveMissingContentType(
         init,
-        snapshot,
+        sourceHeaders,
       ),
     );
-    return Response._(
-      NativeResponseHost(nativeCopy),
-      snapshot.withHeaders(io_headers.Headers(nativeCopy.headers)),
-    );
+    return Response._(NativeResponseHost(nativeCopy), metadata: metadata);
   }
 
   static bool _shouldPreserveMissingContentType(
     native.ResponseInit? init,
-    _ResponseSnapshot snapshot,
+    io_headers.Headers sourceHeaders,
   ) {
-    return init?.headers == null && !snapshot.headers.has('content-type');
+    return init?.headers == null && !sourceHeaders.has('content-type');
   }
 
   static native.Response _nativeResponseFromCopy(
     Body? body, {
-    required _ResponseSnapshot snapshot,
+    required _ResponseMetadata metadata,
+    required Object? headers,
     required bool preserveMissingContentType,
   }) {
     final response = native.Response(
       body,
       native.ResponseInit(
-        status: snapshot.status,
-        statusText: snapshot.statusText,
-        headers: snapshot.headers,
+        status: metadata.status,
+        statusText: metadata.statusText,
+        headers: headers,
       ),
     );
     if (preserveMissingContentType) {

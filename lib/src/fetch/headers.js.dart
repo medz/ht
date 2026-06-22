@@ -102,3 +102,6 @@ class Headers
     }
   }
 }
+
+Headers headersFromHost(dom.Headers host) =>
+    Headers._(web.Headers.fromHost(host));

@@ -20,6 +20,8 @@ extension type Headers._(JSObject _) implements web.Headers {
   external ArrayIterator keys();
   external ArrayIterator values();
 
+  factory Headers.fromHost(web.Headers host) => Headers._(host);
+
   factory Headers.fromEntries(Iterable<MapEntry<String, String>> entries) {
     final headers = Headers();
     for (final MapEntry(key: name, :value) in entries) {
