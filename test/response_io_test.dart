@@ -326,8 +326,16 @@ void main() {
       final httpResponse = await httpRequest.close();
 
       final response = Response(httpResponse);
+      final copy = Response(
+        response,
+        const native.ResponseInit(statusText: 'OK'),
+      );
 
       expect(response.redirected, isTrue);
+      expect(copy.redirected, isTrue);
+      expect(copy.statusText, 'OK');
+      expect(await copy.text(), 'ok');
+      expect(response.bodyUsed, isFalse);
       expect(await response.text(), 'ok');
     });
 

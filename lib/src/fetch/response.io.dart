@@ -23,27 +23,40 @@ final class NativeResponseHost extends ResponseHost<native.Response> {
 }
 
 class Response implements native.Response {
-  Response._(this._host);
+  Response._(
+    this._host, {
+    io_headers.Headers? headers,
+    bool? redirected,
+    int? status,
+    String? statusText,
+    native.ResponseType? type,
+    String? url,
+  }) : _headers = headers,
+       _redirected = redirected,
+       _status = status,
+       _statusText = statusText,
+       _type = type,
+       _url = url;
 
   factory Response([Object? body, native.ResponseInit? init]) {
-    final host = switch ((body, init)) {
-      (final Response response, null) => response.clone()._host,
-      (final Response response, _) => NativeResponseHost(
-        _nativeResponseFromWrappedResponse(response, init),
-      ),
-      (final io.HttpClientResponse response, null) => HttpClientResponseHost(
+    return switch ((body, init)) {
+      (final Response response, null) => response.clone(),
+      (final Response response, _) => _responseFromWrappedResponse(
         response,
+        init,
       ),
-      (final native.Response response, null) => NativeResponseHost(
-        response.clone(),
+      (final io.HttpClientResponse response, null) => Response._(
+        HttpClientResponseHost(response),
       ),
-      (final native.Response response, _) => NativeResponseHost(
-        _nativeResponseFromNativeResponse(response, init),
+      (final native.Response response, null) => Response._(
+        NativeResponseHost(response.clone()),
       ),
-      _ => NativeResponseHost(native.Response(body, init)),
+      (final native.Response response, _) => _responseFromNativeResponse(
+        response,
+        init,
+      ),
+      _ => Response._(NativeResponseHost(native.Response(body, init))),
     };
-
-    return Response._(host);
   }
 
   factory Response.error() => Response(native.Response.error());
@@ -59,6 +72,11 @@ class Response implements native.Response {
   final ResponseHost _host;
   io_headers.Headers? _headers;
   Body? _body;
+  final bool? _redirected;
+  final int? _status;
+  final String? _statusText;
+  final native.ResponseType? _type;
+  final String? _url;
 
   @override
   io_headers.Headers get headers {
@@ -89,6 +107,9 @@ class Response implements native.Response {
 
   @override
   bool get ok {
+    final status = _status;
+    if (status != null) return HttpStatus.isSuccess(status);
+
     return switch (_host) {
       final HttpClientResponseHost host => HttpStatus.isSuccess(
         host.value.statusCode,
@@ -99,6 +120,9 @@ class Response implements native.Response {
 
   @override
   bool get redirected {
+    final redirected = _redirected;
+    if (redirected != null) return redirected;
+
     return switch (_host) {
       final HttpClientResponseHost host => host.value.redirects.isNotEmpty,
       final NativeResponseHost host => host.value.redirected,
@@ -107,6 +131,9 @@ class Response implements native.Response {
 
   @override
   int get status {
+    final status = _status;
+    if (status != null) return status;
+
     return switch (_host) {
       final HttpClientResponseHost host => host.value.statusCode,
       final NativeResponseHost host => host.value.status,
@@ -115,6 +142,9 @@ class Response implements native.Response {
 
   @override
   String get statusText {
+    final statusText = _statusText;
+    if (statusText != null) return statusText;
+
     return switch (_host) {
       final HttpClientResponseHost host => host.value.reasonPhrase,
       final NativeResponseHost host => host.value.statusText,
@@ -123,6 +153,9 @@ class Response implements native.Response {
 
   @override
   native.ResponseType get type {
+    final type = _type;
+    if (type != null) return type;
+
     return switch (_host) {
       final HttpClientResponseHost _ => native.ResponseType.default_,
       final NativeResponseHost host => host.value.type,
@@ -131,6 +164,9 @@ class Response implements native.Response {
 
   @override
   String get url {
+    final url = _url;
+    if (url != null) return url;
+
     return switch (_host) {
       final HttpClientResponseHost _ => '',
       final NativeResponseHost host => host.value.url,
@@ -199,6 +235,12 @@ class Response implements native.Response {
     return switch (_host) {
       final NativeResponseHost host => Response._(
         NativeResponseHost(host.value.clone()),
+        headers: io_headers.Headers(headers),
+        redirected: redirected,
+        status: status,
+        statusText: statusText,
+        type: type,
+        url: url,
       ),
       final HttpClientResponseHost _ => Response._(
         NativeResponseHost(
@@ -211,6 +253,9 @@ class Response implements native.Response {
             ),
           ),
         ),
+        redirected: redirected,
+        type: type,
+        url: url,
       ),
     };
   }
@@ -221,6 +266,30 @@ class Response implements native.Response {
       HttpStatus.resetContent,
       HttpStatus.notModified,
     }.contains(status);
+  }
+
+  static Response _responseFromWrappedResponse(
+    Response response,
+    native.ResponseInit? init,
+  ) {
+    return Response._(
+      NativeResponseHost(_nativeResponseFromWrappedResponse(response, init)),
+      redirected: response.redirected,
+      type: response.type,
+      url: response.url,
+    );
+  }
+
+  static Response _responseFromNativeResponse(
+    native.Response response,
+    native.ResponseInit? init,
+  ) {
+    return Response._(
+      NativeResponseHost(_nativeResponseFromNativeResponse(response, init)),
+      redirected: response.redirected,
+      type: response.type,
+      url: response.url,
+    );
   }
 
   static native.Response _nativeResponseFromWrappedResponse(

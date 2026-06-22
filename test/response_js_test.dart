@@ -195,6 +195,30 @@ void main() {
       expect(await upstream.text(), 'web wrapped body');
     });
 
+    test('preserves fetched web metadata when copying with init', () async {
+      final upstream = await web.window
+          .fetch('data:text/plain,fetch%20metadata'.toJS)
+          .toDart;
+      final wrapped = Response(upstream);
+
+      expect(wrapped.url, startsWith('data:text/plain'));
+
+      final response = Response(
+        wrapped,
+        const native.ResponseInit(statusText: 'OK'),
+      );
+
+      expect(response.status, wrapped.status);
+      expect(response.statusText, 'OK');
+      expect(response.type, wrapped.type);
+      expect(response.url, wrapped.url);
+      expect(response.redirected, wrapped.redirected);
+      expect(wrapped.bodyUsed, isFalse);
+      expect(await response.text(), 'fetch metadata');
+      expect(wrapped.bodyUsed, isFalse);
+      expect(await wrapped.text(), 'fetch metadata');
+    });
+
     test('applies init overrides when copying web responses', () async {
       final upstream = web.Response(
         'web body'.toJS,
