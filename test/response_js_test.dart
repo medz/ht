@@ -219,6 +219,74 @@ void main() {
       expect(await wrapped.text(), 'fetch metadata');
     });
 
+    test('uses effective web copy headers for formData', () async {
+      final upstream = web.Response(
+        'a=1'.toJS,
+        web.ResponseInit(
+          headers: {'content-type': 'text/plain'}.jsify()! as web.HeadersInit,
+        ),
+      );
+      final response = Response(
+        upstream,
+        native.ResponseInit(
+          headers: {'content-type': 'application/x-www-form-urlencoded'},
+        ),
+      );
+
+      final parsed = await response.formData();
+      expect((parsed.get('a') as TextMultipart).value, '1');
+      expect(upstream.bodyUsed, isFalse);
+
+      final wrapped = Response(
+        web.Response(
+          'b=2'.toJS,
+          web.ResponseInit(
+            headers: {'content-type': 'text/plain'}.jsify()! as web.HeadersInit,
+          ),
+        ),
+      );
+      wrapped.headers.set('content-type', 'application/x-www-form-urlencoded');
+      final wrappedCopy = Response(
+        wrapped,
+        const native.ResponseInit(statusText: 'OK'),
+      );
+
+      final wrappedParsed = await wrappedCopy.formData();
+      expect((wrappedParsed.get('b') as TextMultipart).value, '2');
+      expect(wrapped.bodyUsed, isFalse);
+    });
+
+    test('preserves zero-status web responses when copying with init', () {
+      final rawCopy = Response(
+        web.Response.error(),
+        native.ResponseInit(
+          statusText: 'Network Error',
+          headers: {'x-init': '1'},
+        ),
+      );
+
+      expect(rawCopy.status, 0);
+      expect(rawCopy.statusText, 'Network Error');
+      expect(rawCopy.ok, isFalse);
+      expect(rawCopy.type, native.ResponseType.error);
+      expect(rawCopy.headers.get('x-init'), '1');
+
+      final wrapped = Response.error();
+      final wrappedCopy = Response(
+        wrapped,
+        native.ResponseInit(
+          statusText: 'Network Error',
+          headers: {'x-init': '1'},
+        ),
+      );
+
+      expect(wrappedCopy.status, 0);
+      expect(wrappedCopy.statusText, 'Network Error');
+      expect(wrappedCopy.ok, isFalse);
+      expect(wrappedCopy.type, native.ResponseType.error);
+      expect(wrappedCopy.headers.get('x-init'), '1');
+    });
+
     test('applies init overrides when copying web responses', () async {
       final upstream = web.Response(
         'web body'.toJS,

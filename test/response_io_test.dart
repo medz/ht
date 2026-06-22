@@ -156,6 +156,38 @@ void main() {
       },
     );
 
+    test('preserves zero-status error responses when copying with init', () {
+      final wrapped = Response.error();
+      final wrappedCopy = Response(
+        wrapped,
+        native.ResponseInit(
+          statusText: 'Network Error',
+          headers: {'x-init': '1'},
+        ),
+      );
+
+      expect(wrappedCopy.status, 0);
+      expect(wrappedCopy.statusText, 'Network Error');
+      expect(wrappedCopy.ok, isFalse);
+      expect(wrappedCopy.type, native.ResponseType.error);
+      expect(wrappedCopy.headers.get('x-init'), '1');
+
+      final upstream = native.Response.error();
+      final nativeCopy = Response(
+        upstream,
+        native.ResponseInit(
+          statusText: 'Network Error',
+          headers: {'x-init': '1'},
+        ),
+      );
+
+      expect(nativeCopy.status, 0);
+      expect(nativeCopy.statusText, 'Network Error');
+      expect(nativeCopy.ok, isFalse);
+      expect(nativeCopy.type, native.ResponseType.error);
+      expect(nativeCopy.headers.get('x-init'), '1');
+    });
+
     test('rejects copying consumed wrapped responses', () async {
       final upstream = Response('used body');
 

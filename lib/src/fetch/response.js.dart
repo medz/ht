@@ -57,6 +57,11 @@ class Response implements native.Response {
       (final web.Response response, _) => _responseFromWebResponse(
         response,
         init,
+        redirected: response.redirected,
+        status: response.status,
+        statusText: response.statusText,
+        type: _responseTypeFromValue(response.type),
+        url: response.url,
       ),
       (final native.Response response, null) => Response._(
         NativeResponseHost(response.clone()),
@@ -272,9 +277,10 @@ class Response implements native.Response {
   @override
   Response clone() {
     return switch (_host) {
-      final WebResponseHost host => Response._(
-        WebResponseHost(host.value.clone()),
-        headers: js_headers.Headers(headers),
+      final WebResponseHost host => _responseFromWebResponse(
+        host.value,
+        null,
+        sourceHeaders: js_headers.Headers(headers),
         redirected: redirected,
         status: status,
         statusText: statusText,
@@ -336,9 +342,25 @@ class Response implements native.Response {
     native.ResponseType? type,
     String? url,
   }) {
-    final targetStatus = _validateStatus(
-      init?.status ?? status ?? response.status,
+    final sourceStatus = status ?? response.status;
+    final effectiveHeaders = js_headers.Headers(
+      init?.headers ?? sourceHeaders ?? response.headers,
     );
+    final effectiveStatusText =
+        init?.statusText ?? statusText ?? response.statusText;
+    if (init?.status == null && sourceStatus == 0) {
+      return Response._(
+        WebResponseHost(response.clone()),
+        headers: effectiveHeaders,
+        redirected: redirected,
+        status: sourceStatus,
+        statusText: effectiveStatusText,
+        type: type,
+        url: url,
+      );
+    }
+
+    final targetStatus = _validateStatus(init?.status ?? sourceStatus);
     if (!_statusAllowsBody(targetStatus) && response.body != null) {
       throw ArgumentError.value(
         response,
@@ -347,14 +369,21 @@ class Response implements native.Response {
       );
     }
 
+    final source = response.clone();
     return Response._(
-      WebResponseHost(response.clone()),
-      headers: js_headers.Headers(
-        init?.headers ?? sourceHeaders ?? response.headers,
+      WebResponseHost(
+        web.Response(
+          source.body,
+          web.ResponseInit(
+            status: targetStatus,
+            statusText: effectiveStatusText,
+            headers: effectiveHeaders.host,
+          ),
+        ),
       ),
       redirected: redirected,
       status: targetStatus,
-      statusText: init?.statusText ?? statusText ?? response.statusText,
+      statusText: effectiveStatusText,
       type: type,
       url: url,
     );
@@ -364,6 +393,19 @@ class Response implements native.Response {
     Response response,
     native.ResponseInit? init,
   ) {
+    if (init?.status == null && response.status == 0) {
+      final clone = response.clone();
+      return Response._(
+        clone._host,
+        headers: js_headers.Headers(init?.headers ?? response.headers),
+        redirected: response.redirected,
+        status: response.status,
+        statusText: init?.statusText ?? response.statusText,
+        type: response.type,
+        url: response.url,
+      );
+    }
+
     return Response._(
       NativeResponseHost(
         _nativeResponseFromNativeWrappedResponse(response, init),
@@ -378,6 +420,18 @@ class Response implements native.Response {
     native.Response response,
     native.ResponseInit? init,
   ) {
+    if (init?.status == null && response.status == 0) {
+      return Response._(
+        NativeResponseHost(response.clone()),
+        headers: js_headers.Headers(init?.headers ?? response.headers),
+        redirected: response.redirected,
+        status: response.status,
+        statusText: init?.statusText ?? response.statusText,
+        type: response.type,
+        url: response.url,
+      );
+    }
+
     return Response._(
       NativeResponseHost(_nativeResponseFromNativeResponse(response, init)),
       redirected: response.redirected,

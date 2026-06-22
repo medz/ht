@@ -272,6 +272,19 @@ class Response implements native.Response {
     Response response,
     native.ResponseInit? init,
   ) {
+    if (init?.status == null && response.status == 0) {
+      final clone = response.clone();
+      return Response._(
+        clone._host,
+        headers: io_headers.Headers(init?.headers ?? response.headers),
+        redirected: response.redirected,
+        status: response.status,
+        statusText: init?.statusText ?? response.statusText,
+        type: response.type,
+        url: response.url,
+      );
+    }
+
     return Response._(
       NativeResponseHost(_nativeResponseFromWrappedResponse(response, init)),
       redirected: response.redirected,
@@ -284,6 +297,18 @@ class Response implements native.Response {
     native.Response response,
     native.ResponseInit? init,
   ) {
+    if (init?.status == null && response.status == 0) {
+      return Response._(
+        NativeResponseHost(response.clone()),
+        headers: io_headers.Headers(init?.headers ?? response.headers),
+        redirected: response.redirected,
+        status: response.status,
+        statusText: init?.statusText ?? response.statusText,
+        type: response.type,
+        url: response.url,
+      );
+    }
+
     return Response._(
       NativeResponseHost(_nativeResponseFromNativeResponse(response, init)),
       redirected: response.redirected,
