@@ -234,8 +234,12 @@ class Response implements native.Response {
   @override
   Response clone() {
     return switch (_host) {
-      final WebResponseHost host => Response(host.value.clone()),
-      final NativeResponseHost host => Response(host.value.clone()),
+      final WebResponseHost host => Response._(
+        WebResponseHost(host.value.clone()),
+      ),
+      final NativeResponseHost host => Response._(
+        NativeResponseHost(host.value.clone()),
+      ),
     };
   }
 

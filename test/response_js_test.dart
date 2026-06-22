@@ -154,6 +154,10 @@ void main() {
       expect(upstream.bodyUsed, isFalse);
       expect(await response.text(), 'web body');
       expect(upstream.bodyUsed, isFalse);
+      expect(
+        await upstream.text().toDart.then((text) => text.toDart),
+        'web body',
+      );
     });
 
     test('rejects copying consumed wrapped responses', () async {

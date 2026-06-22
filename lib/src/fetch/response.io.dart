@@ -197,26 +197,22 @@ class Response implements native.Response {
   @override
   Response clone() {
     return switch (_host) {
-      final NativeResponseHost host => Response(host.value.clone()),
-      final HttpClientResponseHost _ => Response(
-        native.Response(
-          _bodyForNativeClone(),
-          native.ResponseInit(
-            status: status,
-            statusText: statusText,
-            headers: io_headers.Headers(headers),
+      final NativeResponseHost host => Response._(
+        NativeResponseHost(host.value.clone()),
+      ),
+      final HttpClientResponseHost _ => Response._(
+        NativeResponseHost(
+          native.Response(
+            _bodyForNativeCopy(),
+            native.ResponseInit(
+              status: status,
+              statusText: statusText,
+              headers: io_headers.Headers(headers),
+            ),
           ),
         ),
       ),
     };
-  }
-
-  Body? _bodyForNativeClone() {
-    if (!_statusAllowsBody(status)) {
-      return null;
-    }
-
-    return body?.clone();
   }
 
   static bool _statusAllowsBody(int status) {
