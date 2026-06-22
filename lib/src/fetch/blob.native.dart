@@ -23,7 +23,7 @@ typedef BlobPart = Object;
 /// Native detached binary large object.
 class Blob implements block.Block {
   Blob([Iterable<BlobPart> parts = const <BlobPart>[], String type = ''])
-    : this._fromNormalized(_normalizeParts(parts), type);
+    : this._fromNormalized(_normalizeParts(parts), normalizeBlobType(type));
 
   Blob._fromNormalized(List<Object> parts, String normalizedType)
     : this._fromBlock(
@@ -60,10 +60,10 @@ class Blob implements block.Block {
 
   @override
   Blob slice(int start, [int? end, String? contentType]) {
-    contentType ??= '';
+    final normalizedContentType = normalizeBlobType(contentType ?? '');
     return Blob._fromBlock(
-      _host.slice(start, end, contentType),
-      type: contentType,
+      _host.slice(start, end, normalizedContentType),
+      type: normalizedContentType,
     );
   }
 
@@ -88,4 +88,25 @@ class Blob implements block.Block {
       ),
     };
   }
+}
+
+/// Normalizes Blob/File MIME type inputs using the File API rules.
+String normalizeBlobType(String type) {
+  StringBuffer? buffer;
+
+  for (var index = 0; index < type.length; index += 1) {
+    final unit = type.codeUnitAt(index);
+    if (unit < 0x20 || unit > 0x7E) {
+      return '';
+    }
+
+    if (unit >= 0x41 && unit <= 0x5A) {
+      buffer ??= StringBuffer(type.substring(0, index));
+      buffer.writeCharCode(unit + 0x20);
+    } else {
+      buffer?.writeCharCode(unit);
+    }
+  }
+
+  return buffer?.toString() ?? type;
 }

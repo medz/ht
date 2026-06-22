@@ -11,7 +11,10 @@ class Blob extends native.Blob implements block.Block {
   Blob([
     Iterable<native.BlobPart> parts = const <native.BlobPart>[],
     String type = '',
-  ]) : super([_toBlock(parts, type)], type);
+  ]) : this._fromNormalized(parts, native.normalizeBlobType(type));
+
+  Blob._fromNormalized(Iterable<native.BlobPart> parts, String normalizedType)
+    : super([_toBlock(parts, normalizedType)], normalizedType);
 
   static block.Block _toBlock(Iterable<native.BlobPart> parts, String type) {
     return block.Block(_normalizeParts(parts), type: type);
