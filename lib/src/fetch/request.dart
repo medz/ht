@@ -6,7 +6,8 @@ export 'request.native.dart'
         RequestCache,
         RequestRedirect,
         RequestReferrerPolicy,
-        RequestDuplex;
+        RequestDuplex,
+        RequestPriority;
 export 'request.native.dart'
     if (dart.library.js_interop) 'request.js.dart'
     if (dart.library.io) 'request.io.dart'

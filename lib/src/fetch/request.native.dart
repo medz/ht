@@ -1,6 +1,5 @@
 import 'dart:typed_data';
 
-import '../core/http_method.dart';
 import 'body.dart';
 import 'blob.dart';
 import 'form_data.native.dart';
@@ -73,6 +72,16 @@ enum RequestDuplex {
   final String value;
 }
 
+enum RequestPriority {
+  auto('auto'),
+  high('high'),
+  low('low');
+
+  const RequestPriority(this.value);
+
+  final String value;
+}
+
 sealed class _RequestInput {
   const _RequestInput();
 }
@@ -111,9 +120,10 @@ class RequestInit {
     this.integrity,
     this.keepalive,
     this.duplex,
+    this.priority,
   });
 
-  final HttpMethod? method;
+  final String? method;
   final HeadersInit? headers;
   final BodyInit? body;
   final String? referrer;
@@ -125,6 +135,7 @@ class RequestInit {
   final String? integrity;
   final bool? keepalive;
   final RequestDuplex? duplex;
+  final RequestPriority? priority;
 }
 
 /// Native request contract shell aligned with the MDN `Request` surface.
@@ -142,6 +153,7 @@ class Request {
       isHistoryNavigation = _isHistoryNavigationFromInput(input),
       keepalive = _keepaliveFromInput(input, init?.keepalive),
       mode = _modeFromInput(input, init?.mode),
+      priority = _priorityFromInput(input, init?.priority),
       redirect = _redirectFromInput(input, init?.redirect),
       referrer = _referrerFromInput(input, init?.referrer),
       referrerPolicy = _referrerPolicyFromInput(input, init?.referrerPolicy),
@@ -167,8 +179,9 @@ class Request {
   final String integrity;
   final bool isHistoryNavigation;
   final bool keepalive;
-  final HttpMethod method;
+  final String method;
   final RequestMode mode;
+  final RequestPriority priority;
   final RequestRedirect redirect;
   final String referrer;
   final RequestReferrerPolicy? referrerPolicy;
@@ -242,6 +255,7 @@ class Request {
         integrity: integrity,
         keepalive: keepalive,
         duplex: duplex,
+        priority: priority,
       ),
     );
   }
@@ -257,7 +271,7 @@ class Request {
   static Body? _bodyFromInput(
     _RequestInput input,
     BodyInit? init,
-    HttpMethod method,
+    String method,
   ) {
     if (init != null) {
       _validateRequestBodyMethod(method);
@@ -343,25 +357,43 @@ class Request {
     };
   }
 
-  static HttpMethod _methodFromInput(_RequestInput input, HttpMethod? init) {
-    if (init != null) return init;
+  static String _methodFromInput(_RequestInput input, String? init) {
+    if (init != null) return _normalizeMethod(init);
     return switch (input) {
       _RequestRequestInput(:final value) => value.method,
-      _ => HttpMethod.get,
+      _ => 'GET',
     };
   }
 
-  static void _validateRequestBodyMethod(HttpMethod method) {
-    if (method.allowsRequestBody) {
+  static void _validateRequestBodyMethod(String method) {
+    if (method != 'GET' && method != 'HEAD') {
       return;
     }
 
     throw ArgumentError.value(
       method,
       'method',
-      '${method.value} requests cannot have a body.',
+      '$method requests cannot have a body.',
     );
   }
+
+  static String _normalizeMethod(String method) {
+    if (!_methodPattern.hasMatch(method)) {
+      throw ArgumentError.value(method, 'method', 'Invalid HTTP method');
+    }
+
+    final upper = method.toUpperCase();
+    if (upper == 'CONNECT' || upper == 'TRACE' || upper == 'TRACK') {
+      throw ArgumentError.value(method, 'method', 'Forbidden HTTP method');
+    }
+
+    return switch (upper) {
+      'DELETE' || 'GET' || 'HEAD' || 'OPTIONS' || 'POST' || 'PUT' => upper,
+      _ => method,
+    };
+  }
+
+  static final _methodPattern = RegExp(r"^[!#$%&'*+\-.^_`|~0-9A-Za-z]+$");
 
   static RequestMode _modeFromInput(_RequestInput input, RequestMode? init) {
     if (init != null) return init;
@@ -379,6 +411,17 @@ class Request {
     return switch (input) {
       _RequestRequestInput(:final value) => value.redirect,
       _ => RequestRedirect.follow,
+    };
+  }
+
+  static RequestPriority _priorityFromInput(
+    _RequestInput input,
+    RequestPriority? init,
+  ) {
+    if (init != null) return init;
+    return switch (input) {
+      _RequestRequestInput(:final value) => value.priority,
+      _ => RequestPriority.auto,
     };
   }
 

@@ -1,6 +1,5 @@
 import 'dart:convert';
 
-import 'package:ht/src/core/http_method.dart';
 import 'package:ht/src/fetch/blob.dart';
 import 'package:ht/src/fetch/form_data.native.dart';
 import 'package:ht/src/fetch/headers.dart';
@@ -14,7 +13,7 @@ void main() {
       final request = Request('https://example.com');
 
       expect(request.url, 'https://example.com');
-      expect(request.method, HttpMethod.get);
+      expect(request.method, 'GET');
       expect(request.headers.entries(), isEmpty);
       expect(request.body, isNull);
       expect(request.cache, RequestCache.default_);
@@ -25,6 +24,7 @@ void main() {
       expect(request.isHistoryNavigation, isFalse);
       expect(request.keepalive, isFalse);
       expect(request.mode, RequestMode.cors);
+      expect(request.priority, RequestPriority.auto);
       expect(request.redirect, RequestRedirect.follow);
       expect(request.referrer, 'about:client');
       expect(request.referrerPolicy, isNull);
@@ -34,7 +34,7 @@ void main() {
       final upstream = Request(
         Uri.parse('https://example.com/base'),
         RequestInit(
-          method: HttpMethod.post,
+          method: 'POST',
           headers: Headers({'x-upstream': '1'}),
           body: 'payload',
           cache: RequestCache.reload,
@@ -43,6 +43,7 @@ void main() {
           integrity: 'sha256-abc',
           keepalive: true,
           mode: RequestMode.sameOrigin,
+          priority: RequestPriority.high,
           redirect: RequestRedirect.manual,
           referrer: 'https://referrer.example',
           referrerPolicy: RequestReferrerPolicy.origin,
@@ -52,15 +53,16 @@ void main() {
       final request = Request(
         upstream,
         RequestInit(
-          method: HttpMethod.put,
+          method: 'PUT',
           headers: Headers({'x-override': '2'}),
           cache: RequestCache.noStore,
+          priority: RequestPriority.low,
           referrer: 'https://override.example',
         ),
       );
 
       expect(request.url, 'https://example.com/base');
-      expect(request.method, HttpMethod.put);
+      expect(request.method, 'PUT');
       expect(request.headers.get('x-upstream'), isNull);
       expect(request.headers.get('x-override'), '2');
       expect(request.cache, RequestCache.noStore);
@@ -69,17 +71,80 @@ void main() {
       expect(request.integrity, 'sha256-abc');
       expect(request.keepalive, isTrue);
       expect(request.mode, RequestMode.sameOrigin);
+      expect(request.priority, RequestPriority.low);
       expect(request.redirect, RequestRedirect.manual);
       expect(request.referrer, 'https://override.example');
       expect(request.referrerPolicy, RequestReferrerPolicy.origin);
       expect(await request.text(), 'payload');
     });
 
+    test('normalizes standard methods and preserves custom method casing', () {
+      expect(
+        Request('https://example.com', RequestInit(method: 'post')).method,
+        'POST',
+      );
+      expect(
+        Request('https://example.com', RequestInit(method: 'patch')).method,
+        'patch',
+      );
+      expect(
+        Request('https://example.com', RequestInit(method: 'PROPFIND')).method,
+        'PROPFIND',
+      );
+      expect(
+        Request('https://example.com', RequestInit(method: 'propfind')).method,
+        'propfind',
+      );
+      expect(
+        Request('https://example.com', RequestInit(method: 'X-Custom')).method,
+        'X-Custom',
+      );
+    });
+
+    test('rejects invalid and forbidden methods', () {
+      expect(
+        () => Request('https://example.com', RequestInit(method: 'BAD METHOD')),
+        throwsArgumentError,
+      );
+      expect(
+        () => Request('https://example.com', RequestInit(method: '')),
+        throwsArgumentError,
+      );
+      expect(
+        () => Request('https://example.com', RequestInit(method: 'CONNECT')),
+        throwsArgumentError,
+      );
+      expect(
+        () => Request('https://example.com', RequestInit(method: 'trace')),
+        throwsArgumentError,
+      );
+      expect(
+        () => Request('https://example.com', RequestInit(method: 'TRACK')),
+        throwsArgumentError,
+      );
+    });
+
+    test('copies and overrides request priority', () {
+      final upstream = Request(
+        'https://example.com',
+        RequestInit(priority: RequestPriority.high),
+      );
+      final copy = Request(upstream);
+      final override = Request(
+        upstream,
+        RequestInit(priority: RequestPriority.low),
+      );
+
+      expect(copy.priority, RequestPriority.high);
+      expect(override.priority, RequestPriority.low);
+      expect(override.clone().priority, RequestPriority.low);
+    });
+
     test('bytes, text, json and arrayBuffer delegate to body', () async {
       final textRequest = Request(
         'https://example.com/text',
         RequestInit(
-          method: HttpMethod.post,
+          method: 'POST',
           headers: Headers({'content-type': 'application/json'}),
           body: '{"ok":true}',
         ),
@@ -89,19 +154,19 @@ void main() {
 
       final bytesRequest = Request(
         'https://example.com/bytes',
-        RequestInit(method: HttpMethod.post, body: utf8.encode('hello')),
+        RequestInit(method: 'POST', body: utf8.encode('hello')),
       );
       expect(utf8.decode(await bytesRequest.bytes()), 'hello');
 
       final arrayBufferRequest = Request(
         'https://example.com/array-buffer',
-        RequestInit(method: HttpMethod.post, body: utf8.encode('hello')),
+        RequestInit(method: 'POST', body: utf8.encode('hello')),
       );
       expect(utf8.decode(await arrayBufferRequest.arrayBuffer()), 'hello');
 
       final parsedRequest = Request(
         'https://example.com/parsed',
-        RequestInit(method: HttpMethod.post, body: '{"ok":true}'),
+        RequestInit(method: 'POST', body: '{"ok":true}'),
       );
       expect(await parsedRequest.json<Map<String, Object?>>(), {'ok': true});
 
@@ -115,7 +180,7 @@ void main() {
       final request = Request(
         'https://example.com/blob',
         RequestInit(
-          method: HttpMethod.post,
+          method: 'POST',
           headers: Headers({'content-type': 'application/custom'}),
           body: 'hello',
         ),
@@ -129,7 +194,7 @@ void main() {
     test('sets default content-type from body init', () async {
       final textRequest = Request(
         'https://example.com/text',
-        RequestInit(method: HttpMethod.post, body: 'hello'),
+        RequestInit(method: 'POST', body: 'hello'),
       );
       expect(
         textRequest.headers.get('content-type'),
@@ -139,7 +204,7 @@ void main() {
       final paramsRequest = Request(
         'https://example.com/form',
         RequestInit(
-          method: HttpMethod.post,
+          method: 'POST',
           body: URLSearchParams({'a': '1', 'b': '2'}),
         ),
       );
@@ -151,7 +216,7 @@ void main() {
       final blobRequest = Request(
         'https://example.com/blob',
         RequestInit(
-          method: HttpMethod.post,
+          method: 'POST',
           body: Blob(<BlobPart>['hello'], 'text/plain'),
         ),
       );
@@ -159,14 +224,14 @@ void main() {
 
       final emptyBlobRequest = Request(
         'https://example.com/blob',
-        RequestInit(method: HttpMethod.post, body: Blob(<BlobPart>['hello'])),
+        RequestInit(method: 'POST', body: Blob(<BlobPart>['hello'])),
       );
       expect(emptyBlobRequest.headers.get('content-type'), isNull);
 
       final formRequest = Request(
         'https://example.com/multipart',
         RequestInit(
-          method: HttpMethod.post,
+          method: 'POST',
           body: FormData()..append('name', Multipart.text('alice')),
         ),
       );
@@ -179,14 +244,14 @@ void main() {
 
       final bytesRequest = Request(
         'https://example.com/bytes',
-        RequestInit(method: HttpMethod.post, body: utf8.encode('hello')),
+        RequestInit(method: 'POST', body: utf8.encode('hello')),
       );
       expect(bytesRequest.headers.get('content-type'), isNull);
 
       final streamRequest = Request(
         'https://example.com/stream',
         RequestInit(
-          method: HttpMethod.post,
+          method: 'POST',
           body: Stream<List<int>>.value(utf8.encode('hello')),
         ),
       );
@@ -197,7 +262,7 @@ void main() {
       final request = Request(
         'https://example.com/text',
         RequestInit(
-          method: HttpMethod.post,
+          method: 'POST',
           headers: Headers({'content-type': 'application/custom'}),
           body: 'hello',
         ),
@@ -212,7 +277,7 @@ void main() {
         final request = Request(
           'https://example.com/form',
           RequestInit(
-            method: HttpMethod.post,
+            method: 'POST',
             headers: Headers({
               'content-type': 'application/x-www-form-urlencoded;charset=utf-8',
             }),
@@ -247,11 +312,7 @@ void main() {
       final headers = Headers()..set('content-type', encoded.contentType);
       final request = Request(
         'https://example.com/upload',
-        RequestInit(
-          method: HttpMethod.post,
-          headers: headers,
-          body: encoded.stream,
-        ),
+        RequestInit(method: 'POST', headers: headers, body: encoded.stream),
       );
 
       final formData = await request.formData();
@@ -269,7 +330,7 @@ void main() {
       final request = Request(
         'https://example.com/clone',
         RequestInit(
-          method: HttpMethod.post,
+          method: 'POST',
           headers: Headers({'x-id': '1'}),
           body: Stream<List<int>>.fromIterable(<List<int>>[
             utf8.encode('hello '),
@@ -300,7 +361,7 @@ void main() {
     test('clone preserves deleted body-derived content-type', () async {
       final request = Request(
         'https://example.com/clone',
-        RequestInit(method: HttpMethod.post, body: 'hello'),
+        RequestInit(method: 'POST', body: 'hello'),
       );
       expect(request.headers.get('content-type'), 'text/plain;charset=UTF-8');
 
@@ -316,7 +377,7 @@ void main() {
     test('clone fails after body has been consumed', () async {
       final request = Request(
         'https://example.com/clone',
-        RequestInit(method: HttpMethod.post, body: 'used'),
+        RequestInit(method: 'POST', body: 'used'),
       );
 
       expect(await request.text(), 'used');
@@ -331,7 +392,7 @@ void main() {
       expect(
         () => Request(
           'https://example.com',
-          RequestInit(method: HttpMethod.head, body: 'payload'),
+          RequestInit(method: 'HEAD', body: 'payload'),
         ),
         throwsArgumentError,
       );
@@ -340,11 +401,11 @@ void main() {
     test('rejects inherited bodies when overriding to bodyless methods', () {
       final upstream = Request(
         'https://example.com',
-        RequestInit(method: HttpMethod.post, body: 'payload'),
+        RequestInit(method: 'POST', body: 'payload'),
       );
 
       expect(
-        () => Request(upstream, RequestInit(method: HttpMethod.get)),
+        () => Request(upstream, RequestInit(method: 'GET')),
         throwsArgumentError,
       );
     });
@@ -355,7 +416,7 @@ void main() {
         final upstream = Request(
           'https://example.com',
           RequestInit(
-            method: HttpMethod.post,
+            method: 'POST',
             body: Stream<List<int>>.fromIterable(<List<int>>[
               utf8.encode('pay'),
               utf8.encode('load'),
@@ -364,7 +425,7 @@ void main() {
         );
 
         expect(
-          () => Request(upstream, RequestInit(method: HttpMethod.get)),
+          () => Request(upstream, RequestInit(method: 'GET')),
           throwsArgumentError,
         );
 
