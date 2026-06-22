@@ -1,5 +1,20 @@
 ## Next
 
+## 0.5.0
+
+- BREAKING: `Request.method` and `RequestInit.method` now use `String` values
+  instead of `HttpMethod`, allowing custom HTTP methods such as `PROPFIND`
+  while keeping Fetch-style normalization and GET/HEAD body checks.
+- Added `RequestPriority` and `RequestInit.priority` for modeling Fetch request
+  priority hints.
+- Added body-derived `Content-Type` defaults for `Request` and `Response`
+  construction when typed body init values provide a media type and callers omit
+  the header.
+- Normalized `Blob`, `File`, and `Blob.slice(..., contentType)` MIME type
+  inputs with File API semantics.
+- Fixed wrapped `Response` copy semantics so init overrides are applied and
+  source body state is not aliased across native, `dart:io`, and js wrappers.
+
 ## 0.4.2
 
 - Aligned native and `dart:io` `Headers` iteration with Fetch semantics so

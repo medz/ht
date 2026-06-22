@@ -19,7 +19,7 @@ Or add it manually to `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  ht: ^0.3.2
+  ht: ^0.5.0
 ```
 
 ## APIs
