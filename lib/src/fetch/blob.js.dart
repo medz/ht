@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:block/block.dart' as block;
 import 'package:web/web.dart' as web;
 
@@ -25,10 +27,17 @@ class Blob extends native.Blob implements block.Block {
 
   static Object _normalizePart(native.BlobPart part) {
     return switch (part) {
-      final Blob blob => blob,
-      final native.Blob blob => blob,
+      final ByteBuffer buffer => Uint8List.fromList(buffer.asUint8List()),
+      final ByteData data => Uint8List.fromList(
+        data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes),
+      ),
+      final Uint8List bytes => Uint8List.fromList(bytes),
+      final List<int> bytes => Uint8List.fromList(bytes),
+      final String text => text,
+      final Blob blob => native.blobBacking(blob),
+      final native.Blob blob => native.blobBacking(blob),
       final web.Blob blob => blob,
-      _ => native.Blob([part]),
+      _ => native.blobBacking(native.Blob([part])),
     };
   }
 }

@@ -2,6 +2,8 @@
 
 - Added `Body.size` for exposing known body byte lengths without consuming the
   body.
+- Fixed `Blob` byte snapshot semantics so byte-backed parts and read buffers are
+  copied consistently across native, `dart:io`, and js wrappers.
 
 ## 0.5.0
 
