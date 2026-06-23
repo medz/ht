@@ -41,8 +41,11 @@ class Body extends Stream<Uint8List> {
   Body._({
     block.Block? blockHost,
     Stream<Uint8List>? streamHost,
+    int? byteLength,
     this.contentType,
   }) : assert(blockHost != null || streamHost != null),
+       assert(byteLength == null || byteLength >= 0),
+       size = byteLength ?? blockHost?.size,
        _blockHost = blockHost,
        _streamHost = streamHost;
 
@@ -79,6 +82,7 @@ class Body extends Stream<Uint8List> {
         final encoded = formData.encodeMultipart();
         return Body._(
           streamHost: encoded.stream,
+          byteLength: encoded.contentLength,
           contentType: encoded.contentType,
         );
       case final Stream<List<int>> stream:
@@ -102,6 +106,11 @@ class Body extends Stream<Uint8List> {
 
   /// The body-derived media type, when extracting the body produced one.
   final String? contentType;
+
+  /// The byte length when it is known without consuming the body.
+  ///
+  /// Stream-backed bodies created from arbitrary [Stream] values return `null`.
+  final int? size;
 
   Stream<Uint8List> get stream async* {
     final blockHost = _blockHost;
@@ -169,7 +178,11 @@ class Body extends Stream<Uint8List> {
     if (streamHost != null) {
       final (left, right) = streamTee(streamHost);
       _streamHost = left;
-      return Body._(streamHost: right, contentType: contentType);
+      return Body._(
+        streamHost: right,
+        byteLength: size,
+        contentType: contentType,
+      );
     }
 
     throw StateError('Body has no host.');

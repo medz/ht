@@ -1,5 +1,8 @@
 ## Next
 
+- Added `Body.size` for exposing known body byte lengths without consuming the
+  body.
+
 ## 0.5.0
 
 - BREAKING: `Request.method` and `RequestInit.method` now use `String` values
