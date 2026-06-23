@@ -1,4 +1,4 @@
-## Next
+## 0.6.0
 
 - BREAKING: `Body` now extends the platform `Blob` implementation and implements
   `Stream<Uint8List>` directly; use `body` as a stream or call `body.stream()`
