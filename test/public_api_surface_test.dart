@@ -1,3 +1,6 @@
+import 'dart:async';
+import 'dart:typed_data';
+
 import 'package:block/block.dart' as block;
 import 'package:ht/ht.dart';
 import 'package:test/test.dart';
@@ -42,6 +45,8 @@ void main() {
     expect(requestInit.method, 'POST');
     expect(requestInit.priority, RequestPriority.high);
     expect(responseInit.status, 200);
+    expect(body, isA<Blob>());
+    expect(body, isA<Stream<Uint8List>>());
     expect(body.size, 6);
     expect(request.headers.has('content-type'), isTrue);
     expect(await multipart.bytes(), isNotEmpty);

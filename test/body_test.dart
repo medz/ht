@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:block/block.dart' as block;
+import 'package:ht/src/fetch/blob.dart' as platform_blob;
 import 'package:ht/src/fetch/body.dart';
 import 'package:ht/src/fetch/form_data.native.dart';
 import 'package:ht/src/fetch/url_search_params.dart';
@@ -55,6 +56,23 @@ void main() {
       expect(Body([1, 2, 3]).contentType, isNull);
     });
 
+    test('extends platform Blob and implements Stream', () async {
+      final body = Body('hello');
+
+      expect(body, isA<platform_blob.Blob>());
+      expect(body, isA<Stream<Uint8List>>());
+      expect(body.type, 'text/plain;charset=utf-8');
+      expect(body.size, 5);
+
+      final slice = body.slice(1, 4);
+      expect(await slice.text(), 'ell');
+      expect(body.bodyUsed, isFalse);
+
+      final chunks = await expectNonNullableStream(body).toList();
+      expect(chunks.expand((chunk) => chunk).toList(), utf8.encode('hello'));
+      expect(body.bodyUsed, isTrue);
+    });
+
     test('exposes known byte size without consuming the body', () {
       final params = URLSearchParams({'a': '1', 'b': '2'});
       final formData = FormData()..append('a', Multipart.text('1'));
@@ -74,10 +92,10 @@ void main() {
       expect(formBody.bodyUsed, isFalse);
     });
 
-    test('reports null size for arbitrary stream bodies', () {
+    test('rejects size reads for arbitrary stream bodies', () {
       final body = Body(Stream<List<int>>.value(utf8.encode('stream')));
 
-      expect(body.size, isNull);
+      expect(() => body.size, throwsUnsupportedError);
       expect(body.bodyUsed, isFalse);
     });
 
@@ -145,7 +163,7 @@ void main() {
       'empty bodies return empty bytes and become used when consumed',
       () async {
         final body = Body();
-        final stream = expectNonNullableStream(body.stream);
+        final stream = expectNonNullableStream(body);
 
         expect(body.bodyUsed, isFalse);
         expect(await stream.toList(), isEmpty);

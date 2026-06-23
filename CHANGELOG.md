@@ -1,5 +1,8 @@
 ## Next
 
+- BREAKING: `Body` now extends the platform `Blob` implementation and implements
+  `Stream<Uint8List>` directly; use `body` as a stream or call `body.stream()`
+  instead of reading the previous `body.stream` getter.
 - Added `Body.size` for exposing known body byte lengths without consuming the
   body.
 - Fixed `Blob` byte snapshot semantics so byte-backed parts and read buffers are
