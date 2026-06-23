@@ -52,11 +52,15 @@ class Blob implements block.Block {
   Future<String> text() => _host.text();
 
   @override
-  Stream<Uint8List> stream({int chunkSize = 16 * 1024}) async* {
+  Stream<Uint8List> stream({int chunkSize = 16 * 1024}) {
     if (chunkSize <= 0) {
       throw ArgumentError.value(chunkSize, 'chunkSize', 'Must be > 0');
     }
 
+    return _stream(chunkSize);
+  }
+
+  Stream<Uint8List> _stream(int chunkSize) async* {
     await for (final chunk in _host.stream(chunkSize: chunkSize)) {
       yield Uint8List.fromList(chunk);
     }

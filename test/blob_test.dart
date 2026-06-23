@@ -63,6 +63,8 @@ void main() {
         Uint8List.fromList(utf8.encode('abcd')),
       ]);
 
+      expect(() => blob.stream(chunkSize: 0), throwsArgumentError);
+
       final chunks = await blob.stream(chunkSize: 2).toList();
       chunks.first[0] = 'x'.codeUnitAt(0);
 
