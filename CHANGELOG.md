@@ -5,6 +5,8 @@
   instead of reading the previous `body.stream` getter.
 - Added `Body.size` for exposing known body byte lengths without consuming the
   body.
+- Added a public generative `Body` constructor so downstream wrappers can extend
+  `Body` without reimplementing `BodyInit` normalization.
 - Fixed `Blob` byte snapshot semantics so byte-backed parts and read buffers are
   copied consistently across native, `dart:io`, and js wrappers.
 
