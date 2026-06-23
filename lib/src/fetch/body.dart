@@ -15,6 +15,7 @@ import 'url_search_params.dart';
 /// - [String]
 /// - [Uint8List]
 /// - [ByteBuffer]
+/// - [ByteData]
 /// - [List<int>]
 /// - [Stream<List<int>>]
 /// - [Blob]
@@ -23,8 +24,8 @@ import 'url_search_params.dart';
 /// - [FormData]
 /// - [URLSearchParams]
 ///
-/// On IO, `dart:io File` values are supported as [Blob] parts. Wrap files in a
-/// [Blob] before passing them as [BodyInit], for example `Body(Blob([file]))`.
+/// On IO, `dart:io File` values are supported through the platform [Blob]
+/// implementation.
 ///
 /// Bodies normalize supported inputs into a detached [Blob] when
 /// possible. Platform implementations may accept additional host-backed inputs
@@ -35,7 +36,7 @@ const _textPlainUtf8 = 'text/plain;charset=UTF-8';
 const _urlEncodedUtf8 = 'application/x-www-form-urlencoded;charset=UTF-8';
 const _defaultBlobChunkSize = 16 * 1024;
 
-/// Native detached body implementation.
+/// Detached body implementation.
 ///
 /// This is the shared body baseline that web/io implementations align to.
 class Body extends Blob with Stream<Uint8List> implements Stream<Uint8List> {
@@ -55,7 +56,12 @@ class Body extends Blob with Stream<Uint8List> implements Stream<Uint8List> {
       final Body body => body.clone(),
       final FormData formData => Body._fromFormData(formData),
       final Stream<List<int>> stream => Body._fromStream(stream),
-      _ => Body._fromBlobInit(init),
+      final String text => Body._fromBlobInit(text, _textPlainUtf8),
+      final URLSearchParams params => Body._fromBlobInit(
+        params.toString(),
+        _urlEncodedUtf8,
+      ),
+      _ => Body._fromBlobInit(init, _blobInitType(init)),
     };
   }
 
@@ -84,11 +90,15 @@ class Body extends Blob with Stream<Uint8List> implements Stream<Uint8List> {
   }
 
   @override
-  Stream<Uint8List> stream({int chunkSize = _defaultBlobChunkSize}) async* {
+  Stream<Uint8List> stream({int chunkSize = _defaultBlobChunkSize}) {
     if (chunkSize <= 0) {
       throw ArgumentError.value(chunkSize, 'chunkSize', 'Must be > 0');
     }
 
+    return _stream(chunkSize);
+  }
+
+  Stream<Uint8List> _stream(int chunkSize) async* {
     _startConsumption();
 
     final streamHost = _streamHost;
@@ -107,12 +117,14 @@ class Body extends Blob with Stream<Uint8List> implements Stream<Uint8List> {
 
   @override
   Future<Uint8List> arrayBuffer() async {
-    final builder = BytesBuilder(copy: false);
-    await for (final chunk in stream()) {
-      builder.add(chunk);
+    _startConsumption();
+
+    final streamHost = _streamHost;
+    if (streamHost == null) {
+      return super.arrayBuffer();
     }
 
-    return builder.takeBytes();
+    return _readStream(streamHost);
   }
 
   @override
@@ -192,10 +204,9 @@ class Body extends Blob with Stream<Uint8List> implements Stream<Uint8List> {
     _used = true;
   }
 
-  static Body _fromBlobInit(BodyInit init) {
-    final type = _blobInitType(init);
+  static Body _fromBlobInit(BodyInit init, String type) {
     return Body._(
-      blobParts: _blobInitParts(init),
+      blobParts: init == null ? const <BlobPart>[] : <BlobPart>[init],
       type: type,
       contentType: _contentType(type),
     );
@@ -212,23 +223,16 @@ class Body extends Blob with Stream<Uint8List> implements Stream<Uint8List> {
   }
 
   static Body _fromStream(Stream<List<int>> stream) {
-    return Body._(
-      streamHost: stream.map(
-        (chunk) => chunk is Uint8List ? chunk : Uint8List.fromList(chunk),
-      ),
-    );
+    return Body._(streamHost: stream.map(Uint8List.fromList));
   }
 
-  static Iterable<BlobPart> _blobInitParts(BodyInit init) {
-    return switch (init) {
-      null => const <BlobPart>[],
-      final URLSearchParams params => <BlobPart>[params.toString()],
-      final ByteBuffer buffer => <BlobPart>[buffer.asUint8List()],
-      final List<int> bytes when bytes is! Uint8List => <BlobPart>[
-        Uint8List.fromList(bytes),
-      ],
-      _ => <BlobPart>[init],
-    };
+  static Future<Uint8List> _readStream(Stream<Uint8List> stream) async {
+    final builder = BytesBuilder(copy: false);
+    await for (final chunk in stream) {
+      builder.add(chunk);
+    }
+
+    return builder.takeBytes();
   }
 
   static String _blobInitType(BodyInit init) {

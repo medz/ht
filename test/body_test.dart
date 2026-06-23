@@ -11,6 +11,31 @@ import 'package:test/test.dart';
 
 Stream<Uint8List> expectNonNullableStream(Stream<Uint8List> stream) => stream;
 
+final class _ThrowingReadBlob extends platform_blob.Blob {
+  _ThrowingReadBlob(List<int> bytes, {String type = ''})
+    : super(<Object>[Uint8List.fromList(bytes)], type);
+
+  @override
+  Future<Uint8List> arrayBuffer() {
+    throw StateError('arrayBuffer should not be called');
+  }
+
+  @override
+  Future<Uint8List> bytes() {
+    throw StateError('bytes should not be called');
+  }
+
+  @override
+  Future<String> text() {
+    throw StateError('text should not be called');
+  }
+
+  @override
+  Stream<Uint8List> stream({int chunkSize = 16 * 1024}) {
+    throw StateError('stream should not be called');
+  }
+}
+
 void main() {
   group('Body', () {
     test('string bodies decode as text and bytes', () async {
@@ -73,6 +98,27 @@ void main() {
       expect(body.bodyUsed, isTrue);
     });
 
+    test('normalizes ordinary init values through Blob snapshots', () async {
+      final bytes = Uint8List.fromList([1, 2, 3]);
+      final body = Body(bytes);
+
+      bytes[0] = 9;
+
+      expect(await body.bytes(), [1, 2, 3]);
+    });
+
+    test('uses Blob backing without calling source read methods', () async {
+      final blob = _ThrowingReadBlob([
+        1,
+        2,
+        3,
+      ], type: 'application/octet-stream');
+      final body = Body(blob);
+
+      expect(body.contentType, 'application/octet-stream');
+      expect(await body.bytes(), [1, 2, 3]);
+    });
+
     test('exposes known byte size without consuming the body', () {
       final params = URLSearchParams({'a': '1', 'b': '2'});
       final formData = FormData()..append('a', Multipart.text('1'));
@@ -96,6 +142,26 @@ void main() {
       final body = Body(Stream<List<int>>.value(utf8.encode('stream')));
 
       expect(() => body.size, throwsUnsupportedError);
+      expect(body.bodyUsed, isFalse);
+    });
+
+    test('validates stream chunk size before consumption starts', () async {
+      final body = Body('hello');
+
+      expect(() => body.stream(chunkSize: 0), throwsArgumentError);
+      expect(body.bodyUsed, isFalse);
+
+      final stream = body.stream(chunkSize: 2);
+
+      expect(body.bodyUsed, isFalse);
+      expect(await stream.map(utf8.decode).join(), 'hello');
+      expect(body.bodyUsed, isTrue);
+    });
+
+    test('stream-backed bodies cannot be sliced', () {
+      final body = Body(Stream<List<int>>.value(utf8.encode('stream')));
+
+      expect(() => body.slice(0), throwsUnsupportedError);
       expect(body.bodyUsed, isFalse);
     });
 
@@ -126,6 +192,19 @@ void main() {
 
       expect(await body.text(), 'hello world');
       expect(await clone.text(), 'hello world');
+    });
+
+    test('stream chunks are copied when consumed', () async {
+      final controller = StreamController<List<int>>(sync: true);
+      final chunk = Uint8List.fromList([1, 2, 3]);
+      final body = Body(controller.stream);
+
+      final bytes = body.bytes();
+      controller.add(chunk);
+      chunk[0] = 9;
+      await controller.close();
+
+      expect(await bytes, [1, 2, 3]);
     });
 
     test('copying a stream-backed body preserves independent reads', () async {
