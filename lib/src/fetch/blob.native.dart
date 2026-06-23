@@ -41,21 +41,25 @@ class Blob implements block.Block {
   @override
   int get size => _host.size;
 
-  Future<Uint8List> bytes() => _host.arrayBuffer();
+  Future<Uint8List> bytes() => arrayBuffer();
 
   @override
-  Future<Uint8List> arrayBuffer() => _host.arrayBuffer();
+  Future<Uint8List> arrayBuffer() async {
+    return Uint8List.fromList(await _host.arrayBuffer());
+  }
 
   @override
   Future<String> text() => _host.text();
 
   @override
-  Stream<Uint8List> stream({int chunkSize = 16 * 1024}) {
+  Stream<Uint8List> stream({int chunkSize = 16 * 1024}) async* {
     if (chunkSize <= 0) {
       throw ArgumentError.value(chunkSize, 'chunkSize', 'Must be > 0');
     }
 
-    return _host.stream(chunkSize: chunkSize);
+    await for (final chunk in _host.stream(chunkSize: chunkSize)) {
+      yield Uint8List.fromList(chunk);
+    }
   }
 
   @override
@@ -74,8 +78,8 @@ class Blob implements block.Block {
     return switch (part) {
       final Blob blob => blob._host,
       final block.Block blockPart => blockPart,
-      final ByteBuffer buffer => ByteData.sublistView(buffer.asUint8List()),
-      final ByteData data => ByteData.sublistView(
+      final ByteBuffer buffer => Uint8List.fromList(buffer.asUint8List()),
+      final ByteData data => Uint8List.fromList(
         data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes),
       ),
       final Uint8List bytes => Uint8List.fromList(bytes),
@@ -89,6 +93,12 @@ class Blob implements block.Block {
     };
   }
 }
+
+/// Returns the backing block for Blob-part normalization.
+///
+/// Platform wrappers use this to preserve Blob byte-sequence semantics without
+/// calling overridable read methods on Blob subclasses.
+block.Block blobBacking(Blob blob) => blob._host;
 
 /// Normalizes Blob/File MIME type inputs using the File API rules.
 String normalizeBlobType(String type) {
