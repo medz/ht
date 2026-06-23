@@ -21,6 +21,7 @@ void main() {
     final file = File(<Object>[blob], 'hello.txt', type: 'text/plain');
     final form = FormData()..append('file', Multipart.blob(file));
     final multipart = form.encodeMultipart(boundary: 'api');
+    final body = Body('public');
     final blockBody = block.Block(<Object>['block-body'], type: 'text/plain');
 
     final request = Request(
@@ -41,6 +42,7 @@ void main() {
     expect(requestInit.method, 'POST');
     expect(requestInit.priority, RequestPriority.high);
     expect(responseInit.status, 200);
+    expect(body.size, 6);
     expect(request.headers.has('content-type'), isTrue);
     expect(await multipart.bytes(), isNotEmpty);
     expect(await response.text(), 'block-body');

@@ -55,6 +55,32 @@ void main() {
       expect(Body([1, 2, 3]).contentType, isNull);
     });
 
+    test('exposes known byte size without consuming the body', () {
+      final params = URLSearchParams({'a': '1', 'b': '2'});
+      final formData = FormData()..append('a', Multipart.text('1'));
+      final formBody = Body(formData);
+
+      expect(Body().size, 0);
+      expect(Body('hello').size, 5);
+      expect(Body(Uint8List.fromList([1, 2, 3])).size, 3);
+      expect(Body(Uint8List(2).buffer).size, 2);
+      expect(Body([1, 2, 3, 4]).size, 4);
+      expect(
+        Body(block.Block(<Object>['payload'], type: 'text/plain')).size,
+        7,
+      );
+      expect(Body(params).size, 7);
+      expect(formBody.size, greaterThan(0));
+      expect(formBody.bodyUsed, isFalse);
+    });
+
+    test('reports null size for arbitrary stream bodies', () {
+      final body = Body(Stream<List<int>>.value(utf8.encode('stream')));
+
+      expect(body.size, isNull);
+      expect(body.bodyUsed, isFalse);
+    });
+
     test('block bodies can be converted back to Blob', () async {
       final body = Body(block.Block(<Object>['payload'], type: 'text/plain'));
       final blob = await body.blob();
