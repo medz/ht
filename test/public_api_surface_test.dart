@@ -43,6 +43,11 @@ void main() {
       replayable: true,
     );
     final requestBodyClone = requestBody.clone();
+    final requestBodyForRequest = _RequestBody(
+      'request-body',
+      replayable: false,
+    );
+    final responseBody = _RequestBody('response-body', replayable: true);
     final blockBody = block.Block(<Object>['block-body'], type: 'text/plain');
 
     final request = Request(
@@ -51,6 +56,11 @@ void main() {
     );
 
     final response = Response(blockBody, responseInit);
+    final requestWithSubclassBody = Request(
+      Uri.parse('https://example.com/subclass'),
+      RequestInit(method: method, body: requestBodyForRequest),
+    );
+    final responseWithSubclassBody = Response(responseBody);
 
     final Object init = 'x';
 
@@ -71,9 +81,15 @@ void main() {
     expect(requestBodyClone.replayable, isTrue);
     expect(await requestBody.text(), 'wrap');
     expect(await requestBodyClone.text(), 'wrap');
+    expect(requestWithSubclassBody.body, isA<_RequestBody>());
+    expect((requestWithSubclassBody.body! as _RequestBody).replayable, isFalse);
+    expect(await requestWithSubclassBody.text(), 'request-body');
     expect(request.headers.has('content-type'), isTrue);
     expect(await multipart.bytes(), isNotEmpty);
     expect(await response.text(), 'block-body');
+    expect(responseWithSubclassBody.body, isA<_RequestBody>());
+    expect((responseWithSubclassBody.body! as _RequestBody).replayable, isTrue);
+    expect(await responseWithSubclassBody.text(), 'response-body');
     expect(response.ok, isTrue);
     expect(init, 'x');
   });

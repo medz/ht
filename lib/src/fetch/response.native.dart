@@ -189,6 +189,7 @@ class Response {
         'body',
         'Response status $status cannot have a body.',
       ),
+      final Body body => body.clone(),
       _ => Body(init),
     };
   }

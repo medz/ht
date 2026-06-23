@@ -275,7 +275,10 @@ class Request {
   ) {
     if (init != null) {
       _validateRequestBodyMethod(method);
-      return Body(init);
+      return switch (init) {
+        final Body body => body.clone(),
+        _ => Body(init),
+      };
     }
 
     final body = switch (input) {

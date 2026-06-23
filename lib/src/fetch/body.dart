@@ -257,6 +257,9 @@ final class _BodyState {
 
   static _BodyState from(BodyInit? init) {
     return switch (init) {
+      // Constructor-copy path for subclasses calling super(init). Dispatching
+      // through clone() here would recurse for clone() methods that rebuild
+      // the subclass from the current instance.
       final Body body => body._cloneState(),
       final FormData formData => Body._fromFormData(formData),
       final Stream<List<int>> stream => Body._fromStream(stream),
